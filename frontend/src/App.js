@@ -6,8 +6,11 @@ import ModeratorLogin from "./pages/ModeratorLogin";
 import Home from "./pages/student/Home";
 import ModeratorPanel from "./pages/moderator/moderator_panel";
 import ProtectedRoute from "./token/ProtectedRoute";
-import InstructorForm from "./pages/moderator/register_instructor/form"
+import RegisterForm from "./pages/moderator/register_instructor/register_form";
+import FaceRecord from "./pages/moderator/register_instructor/register_face";
+
 import NotFound from "./pages/error/placeholder-notfound";
+
 
 function App() {
   return (
@@ -22,7 +25,8 @@ function App() {
 
         <Route element={<ProtectedRoute requiredRole="moderator" />}>
           <Route path="/mod-panel" element={<ModeratorPanel />} />
-          <Route path="/mod-register-instructor" element={<InstructorForm />} />
+          <Route path="/mod-register-instructor" element={<RegisterForm />} />
+          <Route path="/mod-record-face" element={<FaceRecord />} />
         </Route>
 
       <Route path="*" element={<NotFound />} />

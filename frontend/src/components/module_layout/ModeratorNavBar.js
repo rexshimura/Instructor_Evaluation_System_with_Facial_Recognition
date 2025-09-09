@@ -1,6 +1,19 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import LoadingOverlay from "../module_feedback/LoadingOverlay";
+
+// LoadingOverlay component is now in the same file to fix the import error.
+const LoadingOverlay = ({ message }) => {
+  return (
+    <div className="fixed top-0 left-0 w-full h-full flex flex-col items-center justify-center bg-gray-900 bg-opacity-75 z-50 transition-opacity duration-300">
+      <div className="flex flex-col items-center">
+        {/* Spinner */}
+        <div className="animate-spin rounded-full h-20 w-20 border-t-4 border-b-4 border-blue-500 mb-4"></div>
+        {/* Loading Message */}
+        <p className="text-white text-xl font-bold">{message}</p>
+      </div>
+    </div>
+  );
+};
 
 export default function ModeratorNavBar() {
   const [isLoading, setIsLoading] = useState(false);
@@ -15,6 +28,15 @@ export default function ModeratorNavBar() {
       navigate("/mod");
       setIsLoading(false);
     }, 1000);
+  };
+
+  const handleRegisterInstructor = () => {
+    setIsLoading(true);
+
+    setTimeout(() => {
+      navigate("/mod-register-instructor");
+      setIsLoading(false);
+    }, 1000); // Simulate a short delay
   };
 
   return (
@@ -51,8 +73,8 @@ export default function ModeratorNavBar() {
           <li className="hover:underline cursor-pointer">
             <Link to="/">Instructor List</Link>
           </li>
-          <li className="hover:underline cursor-pointer">
-            <Link to="/mod-register-instructor">Register Instructor</Link>
+          <li className="hover:underline cursor-pointer" onClick={handleRegisterInstructor}>
+            Register Instructor
           </li>
           <li className="hover:underline cursor-pointer" onClick={handleLogout}>
             Logout
@@ -93,21 +115,30 @@ export default function ModeratorNavBar() {
         <ul className="flex flex-col gap-4">
           <li
             className="hover:underline cursor-pointer"
-            onClick={() => setIsMenuOpen(false)}
+            onClick={() => {
+              setIsMenuOpen(false);
+              navigate("/mod-panel");
+            }}
           >
-            <Link to="/mod-panel">Home</Link>
+            Home
           </li>
           <li
             className="hover:underline cursor-pointer"
-            onClick={() => setIsMenuOpen(false)}
+            onClick={() => {
+              setIsMenuOpen(false);
+              navigate("/mod-panel");
+            }}
           >
-            <Link to="/mod-panel">Instructor List</Link>
+            Instructor List
           </li>
           <li
             className="hover:underline cursor-pointer"
-            onClick={() => setIsMenuOpen(false)}
+            onClick={() => {
+              setIsMenuOpen(false);
+              handleRegisterInstructor();
+            }}
           >
-            <Link to="/mod-register-instructor">Register Instructor</Link>
+            Register Instructor
           </li>
           <li
             className="hover:underline cursor-pointer"
@@ -122,7 +153,7 @@ export default function ModeratorNavBar() {
       </div>
 
       {/* Conditionally render the loading overlay */}
-      {isLoading && <LoadingOverlay message="Logging Out" />}
+      {isLoading && <LoadingOverlay message="Loading Page..." />}
     </>
   );
 }
