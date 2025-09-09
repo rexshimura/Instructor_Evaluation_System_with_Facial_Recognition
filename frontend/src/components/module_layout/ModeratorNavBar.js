@@ -20,7 +20,7 @@ export default function ModeratorNavBar() {
   return (
     <>
       <nav className="bg-blue-800 text-white p-4 flex justify-between items-center relative z-50">
-        <h1 className="font-bold text-lg">Moderator Portal</h1>
+        <h1 className="font-bold text-lg">Moderator Panel</h1>
 
         {/* Mobile menu button */}
         <button
@@ -52,7 +52,7 @@ export default function ModeratorNavBar() {
             <Link to="/">Instructor List</Link>
           </li>
           <li className="hover:underline cursor-pointer">
-            <Link to="/">Facial Registry</Link>
+            <Link to="/">Register Instructor</Link>
           </li>
           <li className="hover:underline cursor-pointer" onClick={handleLogout}>
             Logout
@@ -101,13 +101,13 @@ export default function ModeratorNavBar() {
             className="hover:underline cursor-pointer"
             onClick={() => setIsMenuOpen(false)}
           >
-            <Link to="/">Instructor List</Link>
+            <Link to="/test">Instructor List</Link>
           </li>
           <li
             className="hover:underline cursor-pointer"
             onClick={() => setIsMenuOpen(false)}
           >
-            <Link to="/">Facial Registry</Link>
+            <Link to="/test">Register Instructor</Link>
           </li>
           <li
             className="hover:underline cursor-pointer"

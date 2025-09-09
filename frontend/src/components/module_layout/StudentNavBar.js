@@ -86,7 +86,7 @@ export default function StudentNavBar() {
             <Link to="/home">Home</Link>
           </li>
           <li className="hover:underline cursor-pointer" onClick={() => setIsMenuOpen(false)}>
-            <Link to="/evaluate">Evaluate</Link>
+            <Link to="/test">Evaluate</Link>
           </li>
           <li className="hover:underline cursor-pointer" onClick={() => { handleLogout(); setIsMenuOpen(false); }}>
             Logout
