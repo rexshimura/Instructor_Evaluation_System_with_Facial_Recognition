@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import ModeratorFormNavBar from "../../../components/module_layout/Moderator-FormNavbar";
 
 // InputText component from your module
 const InputText = ({ label, value, onChange, placeholder, type = "text", required, name }) => {
@@ -147,9 +148,11 @@ const App = () => {
   const allSubjectsConfirmed = formData.subjectLoad.every(subject => subject.isConfirmed);
 
   return (
+    <>
+    <ModeratorFormNavBar />
     <div className="min-h-screen bg-gray-100 flex items-center justify-center p-4">
       <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-2xl">
-        <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Instructor Registration</h2>
+        <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Registration Form</h2>
         <form onSubmit={handleSubmit} className="space-y-8">
           {/* Personal Info */}
           <section>
@@ -358,6 +361,7 @@ const App = () => {
         </form>
       </div>
     </div>
+    </>
   );
 };
 
