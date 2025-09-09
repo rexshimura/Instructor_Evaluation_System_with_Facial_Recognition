@@ -1,18 +1,28 @@
+import React from "react";
+ import { Routes, Route } from "react-router-dom";
+
 import Login from "./pages/Login";
+import ModeratorLogin from "./pages/ModeratorLogin";
 import Home from "./pages/home/Home";
-import {Route, Routes} from "react-router-dom";
+import ModeratorPanel from "./pages/moderator_panel/moderator_panel";
 import ProtectedRoute from "./token/ProtectedRoute";
 
 function App() {
-    return (
-    <Routes>
-      <Route path="/" element={<Login />} />
+  return (
 
-        <Route element={<ProtectedRoute />}>
+      <Routes>
+        <Route path="/" element={<Login />} />
+        <Route path="/mod" element={<ModeratorLogin />} />
+
+        <Route element={<ProtectedRoute requiredRole="student" />}>
           <Route path="/home" element={<Home />} />
-
         </Route>
-    </Routes>
+
+        <Route element={<ProtectedRoute requiredRole="moderator" />}>
+          <Route path="/mod-panel" element={<ModeratorPanel />} />
+        </Route>
+      </Routes>
+
   );
 }
 

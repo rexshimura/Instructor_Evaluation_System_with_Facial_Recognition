@@ -1,15 +1,25 @@
 import React from "react";
 import { Navigate, Outlet } from "react-router-dom";
 
-export default function ProtectedRoute() {
+export default function ProtectedRoute({ requiredRole }) {
+  const role = sessionStorage.getItem("role");
   const user = sessionStorage.getItem("user");
 
-  // Check if a user is authenticated
-  if (!user) {
-    // If not authenticated, redirect to the login page
-    return <Navigate to="/" replace />;
+  // 1. Check if the user is authenticated at all.
+  // If not, redirect them to the correct login page.
+  if (!user || !role) {
+    const loginPath = requiredRole === 'student' ? '/' : '/mod';
+    return <Navigate to={loginPath} replace />;
   }
 
-  // If authenticated, render the child routes (e.g., Home)
+  // 2. Check if the authenticated user has the correct role for this route.
+  // If their role doesn't match the required role, redirect them to their own dashboard.
+  if (role !== requiredRole) {
+    const dashboardPath = role === 'student' ? '/home' : '/mod-panel';
+    return <Navigate to={dashboardPath} replace />;
+  }
+
+  // 3. If the user is authenticated AND has the correct role,
+  // allow them to access the requested page.
   return <Outlet />;
 }

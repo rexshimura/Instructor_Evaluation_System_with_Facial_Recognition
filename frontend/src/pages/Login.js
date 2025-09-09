@@ -23,10 +23,11 @@ export default function Login() {
 
       if (foundStudent) {
         sessionStorage.setItem("user", JSON.stringify(foundStudent));
+        sessionStorage.setItem("role", "student");
         navigate("/home");
       } else {
         setMessage("❌ Invalid Student ID or Date of Birth.");
-        setIsLoading(false); // Make sure to hide the overlay on error
+        setIsLoading(false);
       }
     }, 1500);
   };
@@ -60,9 +61,13 @@ export default function Login() {
           </button>
           {message && <p className="mt-4 text-center">{message}</p>}
         </form>
+        <button
+          onClick={() => navigate("/mod")}
+          className="absolute bottom-10 text-blue-500 hover:underline"
+        >
+          Login as Moderator
+        </button>
       </div>
-
-      {/* Conditionally render the loading overlay */}
       {isLoading && <LoadingOverlay message="Logging In" />}
     </>
   );
