@@ -71,7 +71,7 @@ export default function ModeratorNavBar() {
             <Link to="/mod-panel">Home</Link>
           </li>
           <li className="hover:underline cursor-pointer">
-            <Link to="/">Instructor List</Link>
+            <Link to="/mod-instructor-list">Instructor List</Link>
           </li>
           <li className="hover:underline cursor-pointer" onClick={handleRegisterInstructor}>
             Register Instructor

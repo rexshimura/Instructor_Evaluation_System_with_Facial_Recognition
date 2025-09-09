@@ -49,7 +49,7 @@ export default function StudentNavBar() {
             <Link to="/home">Home</Link>
           </li>
           <li className="hover:underline cursor-pointer">
-            <Link to="/evaluate">Evaluate</Link>
+            <Link to="/instructor-list">Evaluate</Link>
           </li>
           <li className="hover:underline cursor-pointer" onClick={handleLogout}>
             Logout

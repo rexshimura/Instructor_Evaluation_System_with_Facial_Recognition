@@ -58,6 +58,9 @@ const InputDateOfBirth = ({ value, onChange, required, name }) => {
   );
 };
 
+// Courses array for dropdown
+const availableCourses = ["BSIT", "BSCpE", "BSCS", "BSIS"];
+
 const InstructorForm = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
@@ -77,6 +80,7 @@ const InstructorForm = () => {
     subjectLoad: [
       {
         subjectName: '',
+        course: '',
         miscode: '',
         units: '',
         semester: '',
@@ -112,6 +116,7 @@ const InstructorForm = () => {
         ...prevData.subjectLoad,
         {
           subjectName: '',
+          course: '',
           miscode: '',
           units: '',
           semester: '',
@@ -131,7 +136,7 @@ const InstructorForm = () => {
   const confirmSubject = (index) => {
     const subject = formData.subjectLoad[index];
     const newSubjectLoad = [...formData.subjectLoad];
-    if (!subject.subjectName || !subject.miscode || !subject.units || !subject.semester || !subject.year) {
+    if (!subject.subjectName || !subject.miscode || !subject.units || !subject.semester || !subject.year || !subject.course) {
       newSubjectLoad[index].validationError = "Please fill in all required fields for this subject before confirming.";
       setFormData({ ...formData, subjectLoad: newSubjectLoad });
       return;
@@ -218,13 +223,40 @@ const InstructorForm = () => {
                     </div>
                   </div>
                   {subject.validationError && <p className="text-red-500 text-sm">{subject.validationError}</p>}
+
+                  {/* Subject Name and Course Dropdown */}
                   <div className="grid grid-cols-1 gap-4">
-                    <InputText label="Subject Name" name="subjectName" value={subject.subjectName} onChange={(e) => handleChange(e, 'subjectLoad', index)} required />
+                    <InputText
+                      label="Subject Name"
+                      name="subjectName"
+                      value={subject.subjectName}
+                      onChange={(e) => handleChange(e, 'subjectLoad', index)}
+                      required
+                    />
+                    <div>
+                      <label className="block text-sm font-medium mb-1 text-gray-700">Subject Course<span className="text-red-500">*</span></label>
+                      <select
+                        name="course"
+                        value={subject.course || ""}
+                        onChange={(e) => handleChange(e, 'subjectLoad', index)}
+                        className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        required
+                      >
+                        <option value="">Select Course</option>
+                        {availableCourses.map(course => (
+                          <option key={course} value={course}>{course}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
+
+                  {/* MIS Code and Units */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <InputText label="MIS Code" name="miscode" value={subject.miscode} onChange={(e) => handleChange(e, 'subjectLoad', index)} required />
                     <InputText label="Units" name="units" value={subject.units} onChange={(e) => handleChange(e, 'subjectLoad', index)} required type="number" />
                   </div>
+
+                  {/* Semester and Year */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium text-gray-700">Semester<span className="text-red-500">*</span></label>
