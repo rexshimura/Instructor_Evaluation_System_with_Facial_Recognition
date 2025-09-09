@@ -1,20 +1,14 @@
 import React from "react";
-import { useLocation } from "react-router-dom";
+import StudentNavBar from "../../components/module_layout/StudentNavBar";
 
 export default function Home() {
-  const location = useLocation();
-  const student = location.state?.student;
+  // Retrieve the student data from session storage
+  const userString = sessionStorage.getItem("user");
+  const student = userString ? JSON.parse(userString) : null;
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
-      <nav className="bg-blue-600 text-white p-4 flex justify-between">
-        <h1 className="font-bold text-lg">Student Portal</h1>
-        <ul className="flex gap-6">
-          <li className="hover:underline cursor-pointer">Home</li>
-          <li className="hover:underline cursor-pointer">Evaluate</li>
-          <li className="hover:underline cursor-pointer">Logout</li>
-        </ul>
-      </nav>
+      <StudentNavBar />
 
       <main className="flex-1 flex flex-col items-center justify-center text-center p-6">
         {student ? (
@@ -27,7 +21,7 @@ export default function Home() {
             </p>
           </>
         ) : (
-          <p className="text-gray-700">Welcome to the Student Portal 🎓</p>
+          <p className="text-gray-700">Please log in to view the portal.</p>
         )}
       </main>
 
