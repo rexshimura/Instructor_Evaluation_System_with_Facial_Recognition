@@ -1,22 +1,25 @@
 import React, { useState } from "react";
-import InputText from "../components/InputText";
-import InputDateOfBirth from "../components/InputDateOfBirth";
+import { useNavigate } from "react-router-dom";
+import InputText from "../components/module_input/InputText";
+import InputDateOfBirth from "../components/module_input/InputDateOfBirth";
 import students from "../data/students";
 
 export default function Login() {
   const [studentId, setStudentId] = useState("");
   const [dob, setDob] = useState("");
   const [message, setMessage] = useState("");
+  const navigate = useNavigate();
 
   const handleLogin = (e) => {
     e.preventDefault();
 
     const foundStudent = students.find(
-      (s) => s.id === studentId && s.dob === dob
+      (s) => s.studentId === studentId && s.dob === dob
     );
 
     if (foundStudent) {
-      setMessage(`✅ Welcome, ${foundStudent.name}!`);
+      // ✅ Redirect to home
+      navigate("/home", { state: { student: foundStudent } });
     } else {
       setMessage("❌ Invalid Student ID or Date of Birth.");
     }
