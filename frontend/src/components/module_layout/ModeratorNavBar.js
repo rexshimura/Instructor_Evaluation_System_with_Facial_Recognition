@@ -52,7 +52,7 @@ export default function ModeratorNavBar() {
             <Link to="/">Instructor List</Link>
           </li>
           <li className="hover:underline cursor-pointer">
-            <Link to="/">Register Instructor</Link>
+            <Link to="/mod-register-instructor">Register Instructor</Link>
           </li>
           <li className="hover:underline cursor-pointer" onClick={handleLogout}>
             Logout
@@ -101,13 +101,13 @@ export default function ModeratorNavBar() {
             className="hover:underline cursor-pointer"
             onClick={() => setIsMenuOpen(false)}
           >
-            <Link to="/test">Instructor List</Link>
+            <Link to="/mod-panel">Instructor List</Link>
           </li>
           <li
             className="hover:underline cursor-pointer"
             onClick={() => setIsMenuOpen(false)}
           >
-            <Link to="/test">Register Instructor</Link>
+            <Link to="/mod-register-instructor">Register Instructor</Link>
           </li>
           <li
             className="hover:underline cursor-pointer"

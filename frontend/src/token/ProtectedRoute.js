@@ -15,7 +15,7 @@ export default function ProtectedRoute({ requiredRole }) {
   // 2. Check if the authenticated user has the correct role for this route.
   // If their role doesn't match the required role, redirect them to their own dashboard.
   if (role !== requiredRole) {
-    const dashboardPath = role === 'student' ? '/home' : '/mod-panel';
+    const dashboardPath = role === 'student' ? '/student' : '/mod-panel';
     return <Navigate to={dashboardPath} replace />;
   }
 

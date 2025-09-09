@@ -3,9 +3,10 @@ import React from "react";
 
 import Login from "./pages/Login";
 import ModeratorLogin from "./pages/ModeratorLogin";
-import Home from "./pages/home/Home";
-import ModeratorPanel from "./pages/moderator_panel/moderator_panel";
+import Home from "./pages/student/Home";
+import ModeratorPanel from "./pages/moderator/moderator_panel";
 import ProtectedRoute from "./token/ProtectedRoute";
+import InstructorForm from "./pages/moderator/register_instructor/form"
 import NotFound from "./pages/error/placeholder-notfound";
 
 function App() {
@@ -21,6 +22,7 @@ function App() {
 
         <Route element={<ProtectedRoute requiredRole="moderator" />}>
           <Route path="/mod-panel" element={<ModeratorPanel />} />
+          <Route path="/mod-register-instructor" element={<InstructorForm />} />
         </Route>
 
       <Route path="*" element={<NotFound />} />
