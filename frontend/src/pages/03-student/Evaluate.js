@@ -12,7 +12,7 @@ const semesterMap = {
 export default function StudentInstructorListPage() {
   const [selectedInstructor, setSelectedInstructor] = useState(null);
 
-  // Get logged-in student from sessionStorage
+  // Get logged-in 03-student from sessionStorage
   const userString = sessionStorage.getItem("user");
   const student = userString ? JSON.parse(userString) : null;
 
@@ -32,7 +32,7 @@ export default function StudentInstructorListPage() {
     );
   }
 
-  // Filter instructors whose subjects match student's course, year, semester
+  // Filter instructors whose subjects match 03-student's course, year, semester
   const alignedInstructors = instructors
     .map((inst) => {
       const subjects = subjectLoadData.filter(
@@ -131,7 +131,7 @@ export default function StudentInstructorListPage() {
                   <p className="font-medium">
                     {sub.subjectName} ({sub.miscode})
                   </p>
-                  <p className="text-sm text-gray-600">
+                  <p className="text-sm text-gray-600">cd
                     {sub.course} - {sub.units} units
                   </p>
                   <p className="text-sm text-gray-600">

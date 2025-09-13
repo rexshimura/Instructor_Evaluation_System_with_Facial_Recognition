@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { FaHome, FaChalkboardTeacher, FaSignOutAlt } from "react-icons/fa";
+import { FaHome, FaUsers, FaUserTie, FaSignOutAlt } from "react-icons/fa";
 import LoadingOverlay from "../module_feedback/LoadingOverlay";
 
-export default function StudentNavBar() {
+export default function AdminNavBar() {
   const [isLoading, setIsLoading] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const navigate = useNavigate();
@@ -11,24 +11,25 @@ export default function StudentNavBar() {
   const handleLogout = () => {
     setIsLoading(true);
     setTimeout(() => {
-      sessionStorage.clear(); // secure logout
-      navigate("/");
+      sessionStorage.clear(); // clear all session data
+      navigate("/adm");
       setIsLoading(false);
     }, 1000);
   };
 
   const navItems = [
-    { label: "Home", path: "/home", icon: <FaHome /> },
-    { label: "Evaluate", path: "/instructor-list", icon: <FaChalkboardTeacher /> },
+    { label: "Home", path: "/admin-panel", icon: <FaHome /> },
+    { label: "Moderator List", path: "/admin-moderator-list", icon: <FaUserTie /> },
+    { label: "Instructor List", path: "/admin-instructor-list", icon: <FaUsers /> },
   ];
 
   return (
     <>
       {/* Navbar */}
-      <nav className="bg-blue-600 text-white p-4 flex justify-between items-center relative z-50">
-        <h1 className="font-bold text-lg">Student Portal</h1>
+      <nav className="bg-purple-800 text-white p-4 flex justify-between items-center relative z-50">
+        <h1 className="font-bold text-lg">Admin Panel</h1>
 
-        {/* Mobile menu toggle */}
+        {/* Mobile toggle */}
         <button
           className="md:hidden focus:outline-none"
           onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -65,7 +66,7 @@ export default function StudentNavBar() {
         </ul>
       </nav>
 
-      {/* Mobile menu overlay */}
+      {/* Mobile overlay */}
       {isMenuOpen && (
         <div
           className="fixed inset-0 z-40 bg-black bg-opacity-50 transition-opacity duration-300"
@@ -73,9 +74,9 @@ export default function StudentNavBar() {
         />
       )}
 
-      {/* Mobile slide-out menu */}
+      {/* Mobile slide-out */}
       <div
-        className={`fixed top-0 right-0 h-full w-60 bg-blue-600 text-white p-4 z-50 transform transition-transform duration-300 ease-in-out
+        className={`fixed top-0 right-0 h-full w-60 bg-purple-800 text-white p-4 z-50 transform transition-transform duration-300 ease-in-out
           ${isMenuOpen ? "translate-x-0" : "translate-x-full"}`}
       >
         <div className="flex justify-end mb-4">

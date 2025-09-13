@@ -5,21 +5,22 @@ export default function ProtectedRoute({ requiredRole }) {
   const role = sessionStorage.getItem("role");
   const user = sessionStorage.getItem("user");
 
-  // 1. Check if the user is authenticated at all.
-  // If not, redirect them to the correct login page.
-  if (!user || !role) {
-    const loginPath = requiredRole === 'student' ? '/' : '/mod';
+  // Debugging (optional)
+  console.log("ProtectedRoute check:", { role, user, requiredRole });
+
+  // 1. If no user OR no role → force login
+  if (!user || !role || user === "null" || user === "undefined") {
+    let loginPath = "/";
+    if (requiredRole === "moderator") loginPath = "/mod";
+    if (requiredRole === "admin") loginPath = "/adm";
     return <Navigate to={loginPath} replace />;
   }
 
-  // 2. Check if the authenticated user has the correct role for this route.
-  // If their role doesn't match the required role, redirect them to their own dashboard.
+  // 2. If role does not match required role → deny access
   if (role !== requiredRole) {
-    const dashboardPath = role === 'student' ? '/student' : '/mod-panel';
-    return <Navigate to={dashboardPath} replace />;
+    return <Navigate to="/oops" replace />;
   }
 
-  // 3. If the user is authenticated AND has the correct role,
-  // allow them to access the requested page.
+  // 3. Valid session + correct role → allow
   return <Outlet />;
 }

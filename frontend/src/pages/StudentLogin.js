@@ -5,7 +5,7 @@ import InputDateOfBirth from "../components/module_input/InputDateOfBirth";
 import students from "../data/students";
 import LoadingOverlay from "../components/module_feedback/LoadingOverlay";
 
-export default function Login() {
+export default function StudentLogin() {
   const [studentId, setStudentId] = useState("");
   const [dob, setDob] = useState("");
   const [message, setMessage] = useState("");

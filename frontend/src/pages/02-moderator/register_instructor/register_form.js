@@ -157,7 +157,7 @@ const InstructorForm = () => {
     setIsLoading(true);
     setTimeout(() => {
       console.log('Form data submitted:', formData);
-      navigate("/mod-record-face");
+      navigate("/mod-panel");
     }, 1000);
   };
 
@@ -284,7 +284,7 @@ const InstructorForm = () => {
             </section>
 
             <button type="submit" disabled={!allSubjectsConfirmed} className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700">
-              Confirm and Next
+              Confirm and Save
             </button>
           </form>
         </div>

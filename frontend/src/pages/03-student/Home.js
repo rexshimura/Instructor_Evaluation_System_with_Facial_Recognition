@@ -2,7 +2,7 @@ import React from "react";
 import StudentNavBar from "../../components/module_layout/StudentNavBar";
 
 export default function Home() {
-  // Retrieve the student data from session storage
+  // Retrieve the 03-student data from session storage
   const userString = sessionStorage.getItem("user");
   const student = userString ? JSON.parse(userString) : null;
 

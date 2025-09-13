@@ -1,25 +1,29 @@
 import React from "react";
  import { Routes, Route } from "react-router-dom";
 
-import Login from "./pages/Login";
+import StudentLogin from "./pages/StudentLogin";
 import ModeratorLogin from "./pages/ModeratorLogin";
-import Home from "./pages/student/Home";
-import ModeratorPanel from "./pages/moderator/moderator_panel";
-import ProtectedRoute from "./token/ProtectedRoute";
-import RegisterForm from "./pages/moderator/register_instructor/register_form";
-import FaceRecord from "./pages/moderator/register_instructor/register_face";
-import InstructorList from "./pages/moderator/instructor_list/instructor_list";
-import StudentInstructorList from "./pages/student/Evaluate";
+import AdminLogin from "./pages/AdminLogin";
 
-import NotFound from "./pages/error/placeholder-notfound";
+import Home from "./pages/03-student/Home";
+import ModeratorPanel from "./pages/02-moderator/moderator_panel";
+import ProtectedRoute from "./token/ProtectedRoute";
+import RegisterForm from "./pages/02-moderator/register_instructor/register_form";
+import FaceRecord from "./pages/02-moderator/register_instructor/register_face";
+import InstructorList from "./pages/02-moderator/instructor_list/instructor_list";
+import StudentInstructorList from "./pages/03-student/Evaluate";
+import AdminPanel from "./pages/01-administration/admin_panel";
+import NotFound from "./pages/04-error/placeholder-notfound";
+import LoginBlock from "./pages/04-error/placeholder-loginblock";
 
 
 function App() {
   return (
 
       <Routes>
-        <Route path="/" element={<Login />} />
+        <Route path="/" element={<StudentLogin />} />
         <Route path="/mod" element={<ModeratorLogin />} />
+        <Route path="/adm" element={<AdminLogin />} />
 
         <Route element={<ProtectedRoute requiredRole="student" />}>
           <Route path="/home" element={<Home />} />
@@ -33,6 +37,11 @@ function App() {
           <Route path="/mod-instructor-list" element={<InstructorList />} />
         </Route>
 
+         <Route element={<ProtectedRoute requiredRole="admin" />}>
+        <Route path="/adm-panel" element={<AdminPanel />} />
+        </Route>
+
+      <Route path="/oops" element={<LoginBlock />} />
       <Route path="*" element={<NotFound />} />
       </Routes>
 

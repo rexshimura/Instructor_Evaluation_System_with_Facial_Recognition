@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import moderators from "../data/moderators";
+import admins from "../data/admin";
 import LoadingOverlay from "../components/module_feedback/LoadingOverlay";
 import InputText from "../components/module_input/InputText";
 import InputPassword from "../components/module_input/InputPassword";
 
-export default function ModeratorLogin() {
+export default function AdminLogin() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
@@ -17,14 +17,14 @@ export default function ModeratorLogin() {
     setIsLoading(true);
 
     setTimeout(() => {
-      const foundModerator = moderators.find(
-        (mod) => mod.mod_username === username && mod.mod_password === password
+      const foundAdmin = admins.find(
+        (adm) => adm.adm_username === username && adm.adm_password === password
       );
 
-      if (foundModerator) {
-        sessionStorage.setItem("user", JSON.stringify(foundModerator));
-        sessionStorage.setItem("role", "moderator");
-        navigate("/mod-panel");
+      if (foundAdmin) {
+        sessionStorage.setItem("user", JSON.stringify(foundAdmin));
+        sessionStorage.setItem("role", "admin");
+        navigate("/adm-panel");
       } else {
         setMessage("❌ Invalid username or password.");
         setIsLoading(false);
@@ -39,7 +39,7 @@ export default function ModeratorLogin() {
           onSubmit={handleLogin}
           className="bg-white p-6 rounded-xl shadow-lg w-96"
         >
-          <h2 className="text-2xl font-bold mb-4">Moderator Login</h2>
+          <h2 className="text-2xl font-bold mb-4">Admin Login</h2>
           <InputText
             label="Username"
             value={username}
@@ -62,15 +62,14 @@ export default function ModeratorLogin() {
           </button>
           {message && <p className="mt-4 text-center text-red-500">{message}</p>}
         </form>
-
-        <div className="absolute bottom-10 w-full text-center text-blue-500">
-          <button onClick={() => navigate("/")} className="hover:underline">Login as Student</button>
-          <span> or </span>
-          <button onClick={() => navigate("/adm")} className="hover:underline">Login as Admin</button>
-        </div>
-
+        <button
+          onClick={() => navigate("/mod")}
+          className="absolute bottom-10 text-blue-500 hover:underline"
+        >
+          Login as Moderator
+        </button>
       </div>
-      {isLoading && <LoadingOverlay message="Logging in as Moderator" />}
+      {isLoading && <LoadingOverlay message="Logging in as Admin" />}
     </>
   );
 }

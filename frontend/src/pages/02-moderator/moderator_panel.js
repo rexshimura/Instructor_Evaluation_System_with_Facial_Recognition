@@ -5,7 +5,7 @@ export default function ModeratorPanel() {
   const userString = sessionStorage.getItem("user"); // Correct key is now "user"
   const moderator = userString ? JSON.parse(userString) : null;
 
-  // Add this check to prevent the error
+  // Add this check to prevent the 04-error
   if (!moderator) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
