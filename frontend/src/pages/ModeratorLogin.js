@@ -64,9 +64,9 @@ export default function ModeratorLogin() {
         </form>
 
         <div className="absolute bottom-10 w-full text-center text-blue-500">
-          <button onClick={() => navigate("/")} className="hover:underline">Login as Student</button>
+          <button onClick={() => navigate("/stud-login")} className="hover:underline">Login as Student</button>
           <span> or </span>
-          <button onClick={() => navigate("/adm")} className="hover:underline">Login as Admin</button>
+          <button onClick={() => navigate("/admn-login")} className="hover:underline">Login as Admin</button>
         </div>
 
       </div>

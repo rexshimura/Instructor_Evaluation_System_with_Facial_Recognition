@@ -62,7 +62,7 @@ export default function StudentLogin() {
           {message && <p className="mt-4 text-center">{message}</p>}
         </form>
         <button
-          onClick={() => navigate("/mod")}
+          onClick={() => navigate("/modr-login")}
           className="absolute bottom-10 text-blue-500 hover:underline"
         >
           Login as Moderator

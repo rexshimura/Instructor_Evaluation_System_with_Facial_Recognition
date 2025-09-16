@@ -63,7 +63,7 @@ export default function AdminLogin() {
           {message && <p className="mt-4 text-center text-red-500">{message}</p>}
         </form>
         <button
-          onClick={() => navigate("/mod")}
+          onClick={() => navigate("/modr-login")}
           className="absolute bottom-10 text-blue-500 hover:underline"
         >
           Login as Moderator
