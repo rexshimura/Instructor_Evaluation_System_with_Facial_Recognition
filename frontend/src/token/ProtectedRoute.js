@@ -10,9 +10,9 @@ export default function ProtectedRoute({ requiredRole }) {
 
   // 1. If no user OR no role → force login
   if (!user || !role || user === "null" || user === "undefined") {
-    let loginPath = "/";
-    if (requiredRole === "moderator") loginPath = "/mod";
-    if (requiredRole === "admin") loginPath = "/adm";
+    let loginPath = "/stud-login";
+    if (requiredRole === "moderator") loginPath = "/modr-login";
+    if (requiredRole === "admin") loginPath = "/admn-login";
     return <Navigate to={loginPath} replace />;
   }
 
