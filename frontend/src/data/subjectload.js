@@ -1,5 +1,6 @@
 const subjectLoad = [
   {
+    subjectID: "SUB01",
     instructorID: "INS01",
     subjectName: "Data Structures",
     miscode: "PC123",
@@ -9,6 +10,7 @@ const subjectLoad = [
     course: "BSIT",
   },
   {
+    subjectID: "SUB02",
     instructorID: "INS01",
     subjectName: "Algorithms",
     miscode: "PC231",
@@ -18,6 +20,7 @@ const subjectLoad = [
     course: "BSIT",
   },
   {
+    subjectID: "SUB03",
     instructorID: "INS02",
     subjectName: "Database Systems",
     miscode: "PC781",
@@ -27,6 +30,7 @@ const subjectLoad = [
     course: "BSIT",
   },
   {
+    subjectID: "SUB04",
     instructorID: "INS03",
     subjectName: "Web Development",
     miscode: "PC234",
@@ -36,6 +40,7 @@ const subjectLoad = [
     course: "BSIT",
   },
   {
+    subjectID: "SUB05",
     instructorID: "INS03",
     subjectName: "Mobile App Development",
     miscode: "PC111",
@@ -45,6 +50,7 @@ const subjectLoad = [
     course: "BSIT",
   },
   {
+    subjectID: "SUB06",
     instructorID: "INS04",
     subjectName: "Operating Systems",
     miscode: "CS101",
@@ -54,6 +60,7 @@ const subjectLoad = [
     course: "BSCS",
   },
   {
+    subjectID: "SUB07",
     instructorID: "INS04",
     subjectName: "Computer Networks",
     miscode: "CS202",
@@ -63,6 +70,7 @@ const subjectLoad = [
     course: "BSCS",
   },
   {
+    subjectID: "SUB08",
     instructorID: "INS05",
     subjectName: "Information Security",
     miscode: "IS301",
@@ -72,6 +80,7 @@ const subjectLoad = [
     course: "BSIS",
   },
   {
+    subjectID: "SUB09",
     instructorID: "INS05",
     subjectName: "Systems Analysis & Design",
     miscode: "IS302",
@@ -81,6 +90,7 @@ const subjectLoad = [
     course: "BSIS",
   },
   {
+    subjectID: "SUB10",
     instructorID: "INS06",
     subjectName: "Introduction to Human Computer Interaction I",
     miscode: "PC315",
@@ -90,6 +100,7 @@ const subjectLoad = [
     course: "BSIT",
   },
   {
+    subjectID: "SUB11",
     instructorID: "INS06",
     subjectName: "Embedded Systems",
     miscode: "CE402",
