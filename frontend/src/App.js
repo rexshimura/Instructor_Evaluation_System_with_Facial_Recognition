@@ -1,5 +1,5 @@
 import React from "react";
- import { Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 
 import StudentLogin from "./pages/StudentLogin";
 import ModeratorLogin from "./pages/ModeratorLogin";
@@ -17,36 +17,41 @@ import AdminPanel from "./pages/01-administration/admin_panel";
 import NotFound from "./pages/04-error/placeholder-notfound";
 import LoginBlock from "./pages/04-error/placeholder-loginblock";
 
-
 function App() {
   return (
+    <Routes>
+      {/* Public Routes */}
+      <Route path="/" element={<StudentLogin />} />
+      <Route path="/mod" element={<ModeratorLogin />} />
+      <Route path="/adm" element={<AdminLogin />} />
 
-      <Routes>
-        <Route path="/" element={<StudentLogin />} />
-        <Route path="/mod" element={<ModeratorLogin />} />
-        <Route path="/adm" element={<AdminLogin />} />
+      {/* Student Routes */}
+      <Route element={<ProtectedRoute requiredRole="student" />}>
+        <Route path="/home" element={<Home />} />
+        <Route path="/instructor-list" element={<StudentInstructorList />} />
+        <Route
+          path="/instructor-evaluation/:instructorID/:subjectID"
+          element={<EvaluationForm />}
+        />
+      </Route>
 
-        <Route element={<ProtectedRoute requiredRole="student" />}>
-          <Route path="/home" element={<Home />} />
-          <Route path="/instructor-list" element={<StudentInstructorList />} />
-          <Route path="/instructor-evaluation/:instructorID/:subjectID" element={<EvaluationForm/>} />
-        </Route>
+      {/* Moderator Routes */}
+      <Route element={<ProtectedRoute requiredRole="moderator" />}>
+        <Route path="/mod-panel" element={<ModeratorPanel />} />
+        <Route path="/mod-register-instructor" element={<RegisterForm />} />
+        <Route path="/mod-record-face" element={<FaceRecord />} />
+        <Route path="/mod-instructor-list" element={<InstructorList />} />
+      </Route>
 
-        <Route element={<ProtectedRoute requiredRole="moderator" />}>
-          <Route path="/mod-panel" element={<ModeratorPanel />} />
-          <Route path="/mod-register-instructor" element={<RegisterForm />} />
-          <Route path="/mod-record-face" element={<FaceRecord />} />
-          <Route path="/mod-instructor-list" element={<InstructorList />} />
-        </Route>
-
-         <Route element={<ProtectedRoute requiredRole="admin" />}>
+      {/* Admin Routes */}
+      <Route element={<ProtectedRoute requiredRole="admin" />}>
         <Route path="/adm-panel" element={<AdminPanel />} />
-        </Route>
+      </Route>
 
+      {/* Error / Fallback */}
       <Route path="/oops" element={<LoginBlock />} />
       <Route path="*" element={<NotFound />} />
-      </Routes>
-
+    </Routes>
   );
 }
 
