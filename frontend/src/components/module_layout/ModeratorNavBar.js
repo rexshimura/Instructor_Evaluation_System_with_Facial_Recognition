@@ -12,7 +12,7 @@ export default function ModeratorNavBar() {
     setIsLoading(true);
     setTimeout(() => {
       sessionStorage.clear(); // clear all session data
-      navigate("/mod");
+      navigate("/modr-login");
       setIsLoading(false);
     }, 1000);
   };

@@ -12,7 +12,7 @@ export default function StudentNavBar() {
     setIsLoading(true);
     setTimeout(() => {
       sessionStorage.clear(); // secure logout
-      navigate("/");
+      navigate("/stud-login");
       setIsLoading(false);
     }, 1000);
   };

@@ -12,7 +12,7 @@ export default function AdminNavBar() {
     setIsLoading(true);
     setTimeout(() => {
       sessionStorage.clear(); // clear all session data
-      navigate("/adm");
+      navigate("/admn-login");
       setIsLoading(false);
     }, 1000);
   };
