@@ -12,6 +12,7 @@ import RegisterForm from "./pages/02-moderator/register_instructor/register_form
 import FaceRecord from "./pages/02-moderator/register_instructor/register_face";
 import InstructorList from "./pages/02-moderator/instructor_list/instructor_list";
 import StudentInstructorList from "./pages/03-student/Evaluate";
+import EvaluationForm from "./pages/03-student/EvaluationForm";
 import AdminPanel from "./pages/01-administration/admin_panel";
 import NotFound from "./pages/04-error/placeholder-notfound";
 import LoginBlock from "./pages/04-error/placeholder-loginblock";
@@ -28,6 +29,7 @@ function App() {
         <Route element={<ProtectedRoute requiredRole="student" />}>
           <Route path="/home" element={<Home />} />
           <Route path="/instructor-list" element={<StudentInstructorList />} />
+          <Route path="/instructor-evaluation/:instructorID/:subjectID" element={<EvaluationForm/>} />
         </Route>
 
         <Route element={<ProtectedRoute requiredRole="moderator" />}>
