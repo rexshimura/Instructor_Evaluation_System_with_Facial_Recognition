@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import StudentNavBar from "../../components/module_layout/StudentNavBar";
 import instructors from "../../data/instructors";
 import subjectLoadData from "../../data/subjectload";
@@ -12,7 +13,9 @@ const semesterMap = {
 export default function StudentInstructorListPage() {
   const [selectedInstructor, setSelectedInstructor] = useState(null);
 
-  // Get logged-in 03-student from sessionStorage
+  const navigate = useNavigate();
+
+  // Get logged-in student from sessionStorage
   const userString = sessionStorage.getItem("user");
   const student = userString ? JSON.parse(userString) : null;
 
@@ -32,7 +35,7 @@ export default function StudentInstructorListPage() {
     );
   }
 
-  // Filter instructors whose subjects match 03-student's course, year, semester
+  // Filter instructors whose subjects match student's course, year, semester
   const alignedInstructors = instructors
     .map((inst) => {
       const subjects = subjectLoadData.filter(
@@ -40,11 +43,15 @@ export default function StudentInstructorListPage() {
           sub.instructorID === inst.instructorID &&
           sub.course === student.course &&
           sub.year === student.year &&
-          sub.semester === student.semester // Compare numbers directly
+          sub.semester === student.semester
       );
       return { ...inst, subjects };
     })
     .filter((inst) => inst.subjects.length > 0);
+
+  const handleEvaluateClick = (instructorID, subjectID) => {
+    navigate(`/instructor-evaluation/${instructorID}/${subjectID}`);
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-gray-100">
@@ -125,18 +132,26 @@ export default function StudentInstructorListPage() {
             </div>
 
             <h3 className="text-xl font-semibold mb-2 border-b pb-2">Subject Load</h3>
-            <div className="space-y-2">
+            <div className="space-y-4">
               {selectedInstructor.subjects.map((sub, index) => (
-                <div key={index} className="bg-gray-50 p-2 rounded-md border">
-                  <p className="font-medium">
-                    {sub.subjectName} ({sub.miscode})
-                  </p>
-                  <p className="text-sm text-gray-600">cd
-                    {sub.course} - {sub.units} units
-                  </p>
-                  <p className="text-sm text-gray-600">
-                    {semesterMap[sub.semester]} - Year {sub.year}
-                  </p>
+                <div key={index} className="bg-gray-50 p-3 rounded-md border flex justify-between items-center">
+                  <div>
+                    <p className="font-medium">
+                      {sub.subjectName} ({sub.miscode})
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {sub.course} - {sub.units} units
+                    </p>
+                    <p className="text-sm text-gray-600">
+                      {semesterMap[sub.semester]} - Year {sub.year}
+                    </p>
+                  </div>
+                  <button
+                    className="bg-blue-500 text-white font-bold py-2 px-4 rounded hover:bg-blue-600 transition"
+                    onClick={() => handleEvaluateClick(selectedInstructor.instructorID, sub.subjectID)}
+                  >
+                    Evaluate
+                  </button>
                 </div>
               ))}
             </div>
