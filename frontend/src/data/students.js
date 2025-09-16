@@ -71,6 +71,18 @@ const students = [
     year: 4,
     semester: 2,
   },
+  {
+    studentId: "1348317",
+    firstName: "Joehanes",
+    middleName: "Polestico",
+    lastName: "Lauglaug",
+    suffix: "",
+    dob: "2005-02-21",
+    sex: "Male",
+    course: "BSIT",
+    year: 3,
+    semester: 1,
+  },
 ];
 
 export default students;
