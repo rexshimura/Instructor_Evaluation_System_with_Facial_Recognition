@@ -1,6 +1,4 @@
-// src/pages/05-instructor/InstructorProfile.js
-
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
 import VerifyNavBar from "../../components/module_layout/VerifyNavBar";
 import instructors from "../../data/instructors";
@@ -26,7 +24,9 @@ export default function InstructorProfile() {
 
   const instructor = instructors.find((inst) => inst.instructorID === instructorID);
   const subjects = subjectLoad.filter((sub) => sub.instructorID === instructorID);
-  const performanceData = calculatePerformance(instructorID);
+
+  // Use useMemo to prevent calculatePerformance from running on every render
+  const performanceData = useMemo(() => calculatePerformance(instructorID), [instructorID]);
 
   useEffect(() => {
     if (!performanceData) {
