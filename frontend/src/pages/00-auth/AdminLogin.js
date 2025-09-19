@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import admins from "../data/admin";
-import LoadingOverlay from "../components/module_feedback/LoadingOverlay";
-import InputText from "../components/module_input/InputText";
-import InputPassword from "../components/module_input/InputPassword";
+import admins from "../../data/admin";
+import LoadingOverlay from "../../components/module_feedback/LoadingOverlay";
+import InputText from "../../components/module_input/InputText";
+import InputPassword from "../../components/module_input/InputPassword";
 
 export default function AdminLogin() {
   const [username, setUsername] = useState("");

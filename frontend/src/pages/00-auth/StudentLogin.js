@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import InputText from "../components/module_input/InputText";
-import InputDateOfBirth from "../components/module_input/InputDateOfBirth";
-import students from "../data/students";
-import LoadingOverlay from "../components/module_feedback/LoadingOverlay";
+import InputText from "../../components/module_input/InputText";
+import InputDateOfBirth from "../../components/module_input/InputDateOfBirth";
+import students from "../../data/students";
+import LoadingOverlay from "../../components/module_feedback/LoadingOverlay";
 
 export default function StudentLogin() {
   const [studentId, setStudentId] = useState("");

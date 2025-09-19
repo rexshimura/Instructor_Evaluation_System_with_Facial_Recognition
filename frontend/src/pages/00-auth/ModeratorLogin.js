@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import moderators from "../data/moderators";
-import LoadingOverlay from "../components/module_feedback/LoadingOverlay";
-import InputText from "../components/module_input/InputText";
-import InputPassword from "../components/module_input/InputPassword";
+import moderators from "../../data/moderators";
+import LoadingOverlay from "../../components/module_feedback/LoadingOverlay";
+import InputText from "../../components/module_input/InputText";
+import InputPassword from "../../components/module_input/InputPassword";
 
 export default function ModeratorLogin() {
   const [username, setUsername] = useState("");
