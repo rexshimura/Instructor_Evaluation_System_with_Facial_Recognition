@@ -161,9 +161,12 @@ export default function InstructorProfile() {
                 <div className="max-w-2xl mx-auto space-y-4">
                   {Object.entries(displayedData.averageCategoryScores).map(([category, score]) => (
                     <div key={category}>
-                      <p className="text-sm font-semibold text-gray-700">
-                        {category}: {getScoreWord(score)} ({score})
-                      </p>
+                      {/* --- MODIFICATION START --- */}
+                      <div className="flex justify-between items-center text-sm font-semibold text-gray-700">
+                        <span>{category}</span>
+                        <span>{getScoreWord(score)} ({score})</span>
+                      </div>
+                      {/* --- MODIFICATION END --- */}
                       <div className="bg-gray-200 rounded-full h-4 mt-1">
                         <div
                           className="bg-blue-500 rounded-full h-4 transition-all duration-500"
