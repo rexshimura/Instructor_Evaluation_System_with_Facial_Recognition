@@ -7,32 +7,30 @@ import ScoreSelector from '../../components/module_selector/ScoreSelector';
 import EvaluationFormNavBar from '../../components/module_layout/EvaluationFormNavBar';
 import ScrollToTopButton from '../../components/module_feedback/ScrollToTopButton';
 
-// Data for evaluation questions
-const evaluationQuestions = [
-  { id: 'q1_effectiveness', question: '1. The instructor presents the subject matter clearly and effectively.' },
-  { id: 'q2_engagement', question: '2. The instructor encourages student participation and engagement.' },
-  { id: 'q3_understanding', question: '3. The instructor identifies the needs, interests, and capacities of individual students and provides adequate support.' },
-  { id: 'q4_knowledge', question: '4. The instructor demonstrates mastery of the subject matter.' },
-  { id: 'q5_organization', question: '5. The instructor organizes the course content logically and coherently.' },
-  { id: 'q6_feedback', question: '6. The instructor provides timely and constructive feedback on assignments and assessments.' },
-  { id: 'q7_availability', question: '7. The instructor is accessible and responsive to student inquiries.' },
-  { id: 'q8_fairness', question: '8. The instructor treats students fairly and respectfully.' },
-  { id: 'q9_motivation', question: '9. The instructor motivates students to learn and explore the subject further.' },
-  { id: 'q10_resources', question: '10. The instructor provides and recommends useful learning materials and resources.' },
-  { id: 'q11_clarity', question: '11. The instructor explains concepts in a way that is easy to understand.' },
-  { id: 'q12_examples', question: '12. The instructor uses relevant examples to illustrate key points.' },
-  { id: 'q13_classroom_management', question: '13. The instructor manages the classroom environment effectively.' },
-  { id: 'q14_interaction', question: '14. The instructor encourages questions and promotes meaningful discussions.' },
-  { id: 'q15_assessment', question: '15. The instructor evaluates students fairly and according to clear criteria.' }
-];
+// Import the categorized questions and remarks question
+import { evaluationQuestions, remarksQuestion } from '../../data/questions';
+
+// Helper object to display full category names
+const categoryDetails = {
+  C1: { title: "Course Organization and Content", description: "This category evaluates how well the course was designed." },
+  C2: { title: "Instructor's Knowledge and Presentation", description: "This category assesses the instructor's knowledge and teaching style." },
+  C3: { title: "Communication and Interaction", description: "This category measures how the instructor interacted with students and facilitated learning." },
+  C4: { title: "Assessment and Feedback", description: "This category evaluates how students were assessed throughout the course." },
+  C5: { title: "Overall Effectiveness", description: "These are broad, summary questions to gauge overall satisfaction and effectiveness." },
+};
+
 
 export default function EvaluationForm() {
   const { instructorID, subjectID } = useParams();
   const navigate = useNavigate();
 
+  // Flatten the questions to initialize the scores state
+  const allQuestions = evaluationQuestions.flatMap(category => category.questions);
+
   const [scores, setScores] = useState(
-    evaluationQuestions.reduce((acc, q) => ({ ...acc, [q.id]: 0 }), {})
+    allQuestions.reduce((acc, q) => ({ ...acc, [q.id]: 0 }), {})
   );
+  const [remarks, setRemarks] = useState(""); // State for the remarks text field
   const [isLoading, setIsLoading] = useState(false);
 
   const instructor = instructors.find(inst => inst.instructorID === instructorID);
@@ -56,45 +54,45 @@ export default function EvaluationForm() {
   };
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  // Check if all questions have been answered
-  const allAnswered = Object.values(scores).every(score => score > 0);
-  if (!allAnswered) {
-    alert("Please answer all evaluation questions before submitting.");
-    return;
-  }
+    const allAnswered = Object.values(scores).every(score => score > 0);
+    if (!allAnswered) {
+      alert("Please answer all evaluation questions before submitting.");
+      return;
+    }
 
-  setIsLoading(true);
+    setIsLoading(true);
 
-  const evaluationData = {
-    instructorID: instructorID,
-    subjectID: subjectID,
-    evaluationDate: new Date().toISOString(),
-    scores: scores,
+    const evaluationData = {
+      instructorID: instructorID,
+      subjectID: subjectID,
+      evaluationDate: new Date().toISOString(),
+      scores: scores,
+      remarks: remarks, // Include remarks in the submission data
+    };
+
+    console.log("Submitting Evaluation:", evaluationData);
+
+    try {
+      const res = await fetch("http://localhost:5000/api/submit", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(evaluationData),
+      });
+
+      const data = await res.json();
+      console.log("Server Response:", data);
+
+      alert("Evaluation submitted successfully!");
+      navigate("/Home");
+    } catch (err) {
+      console.error("Error submitting evaluation:", err);
+      alert("There was an error submitting the evaluation.");
+    } finally {
+      setIsLoading(false);
+    }
   };
-
-  console.log("Submitting Evaluation:", evaluationData);
-
-  try {
-    const res = await fetch("http://localhost:5000/api/submit", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(evaluationData),
-    });
-
-    const data = await res.json();
-    console.log("Server Response:", data);
-
-    alert("Evaluation submitted successfully!");
-    navigate("/Home");
-  } catch (err) {
-    console.error("Error submitting evaluation:", err);
-    alert("There was an error submitting the evaluation.");
-  } finally {
-    setIsLoading(false);
-  }
-};
 
 
   return (
@@ -140,19 +138,40 @@ export default function EvaluationForm() {
             </div>
           </div>
 
-          {/* Evaluation Questions */}
+          {/* Evaluation Questions by Category */}
           <div className="bg-white shadow-lg rounded-lg p-6 mb-8">
             <h3 className="text-2xl font-semibold text-gray-800 mb-4">Evaluation</h3>
-            {evaluationQuestions.map(q => (
-              <div key={q.id} className="mb-8">
-                <label className="block text-gray-700 font-semibold mb-6">{q.question}</label>
-                <ScoreSelector
-                  questionId={q.id}
-                  currentScore={scores[q.id]}
-                  onSelectScore={handleScoreChange}
-                />
+            {evaluationQuestions.map(category => (
+              <div key={category.category} className="mb-10 p-4 border rounded-lg">
+                <h4 className="text-xl font-bold text-gray-800 mb-2">
+                  {categoryDetails[category.category]?.title || category.category}
+                </h4>
+                 <p className="text-sm text-gray-500 mb-6">{categoryDetails[category.category]?.description}</p>
+                {category.questions.map(q => (
+                  <div key={q.id} className="mb-8">
+                    <label className="block text-gray-700 font-semibold mb-6">{q.text}</label>
+                    <ScoreSelector
+                      questionId={q.id}
+                      currentScore={scores[q.id]}
+                      onSelectScore={handleScoreChange}
+                    />
+                  </div>
+                ))}
               </div>
             ))}
+
+            {/* Remarks Section */}
+            <div className="mb-10 p-4 border rounded-lg">
+              <label htmlFor="remarks" className="block text-gray-700 font-semibold mb-4">{remarksQuestion.text}</label>
+              <textarea
+                id="remarks"
+                value={remarks}
+                onChange={(e) => setRemarks(e.target.value)}
+                className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                rows="4"
+                placeholder="Enter your comments here..."
+              ></textarea>
+            </div>
           </div>
 
           {/* Submit Button */}
@@ -174,3 +193,4 @@ export default function EvaluationForm() {
     </div>
   );
 }
+
