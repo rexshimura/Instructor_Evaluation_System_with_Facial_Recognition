@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import admins from "../../data/admin";
 import LoadingOverlay from "../../components/module_feedback/LoadingOverlay";
 import InputText from "../../components/module_input/InputText";
 import InputPassword from "../../components/module_input/InputPassword";
+import { FaArrowLeft, FaUserShield } from "react-icons/fa";
 
 export default function AdminLogin() {
   const [username, setUsername] = useState("");
@@ -34,42 +35,83 @@ export default function AdminLogin() {
 
   return (
     <>
-      <div className="flex justify-center items-center h-screen bg-gray-100">
-        <form
-          onSubmit={handleLogin}
-          className="bg-white p-6 rounded-xl shadow-lg w-96"
+      <div className="min-h-screen grid grid-cols-1 md:grid-cols-2">
+        {/* Left Column: Image with Text Overlay */}
+        <div
+          className="hidden md:block bg-cover bg-center relative"
+          style={{ backgroundImage: "url('/png/banner/banner-03.png')" }}
         >
-          <h2 className="text-2xl font-bold mb-4">Admin Login</h2>
-          <InputText
-            label="Username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            placeholder="Enter your username"
-            type="text"
-          />
-          <InputPassword
-            label="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Enter your password"
-          />
+          <div className="absolute bottom-0 left-0 w-full p-4 bg-black/50 text-white text-xs">
+            <p>Image by Cebu Technological University - Main</p>
+            <p>Made By RavenLabs Development Group, all rights reserved</p>
+          </div>
+        </div>
+
+        {/* Right Column: Form */}
+        <div className="bg-white flex flex-col justify-center items-center p-8 relative">
           <button
-            type="submit"
-            className="w-full bg-blue-500 text-white py-2 rounded-lg hover:bg-blue-600 mt-4"
-            disabled={isLoading}
+            onClick={() => navigate('/')}
+            className="absolute top-8 right-8 flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition"
           >
-            Login
+            <FaArrowLeft />
+            <span>Return</span>
           </button>
-          {message && <p className="mt-4 text-center text-red-500">{message}</p>}
-        </form>
-        <button
-          onClick={() => navigate("/modr-login")}
-          className="absolute bottom-10 text-blue-500 hover:underline"
-        >
-          Login as Moderator
-        </button>
+
+          <div className="w-full max-w-sm">
+            <h1 className="text-3xl font-bold mb-2">
+              Pro<span className="text-blue-400">Ev</span>
+            </h1>
+            <h2 className="text-2xl font-semibold mb-6 text-gray-800">
+              Admin Login
+            </h2>
+            <form onSubmit={handleLogin}>
+              <div className="space-y-4">
+                <InputText
+                  label="Username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Enter your username"
+                  type="text"
+                />
+                <InputPassword
+                  label="Password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Enter your password"
+                />
+              </div>
+
+              <div className="mt-6 flex items-center gap-3">
+                 <button
+                    type="submit"
+                    className="flex-grow bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
+                    disabled={isLoading}
+                  >
+                    Login
+                  </button>
+                  {/* Moderator Login Icon Only */}
+                  <div className="relative group">
+                    <Link
+                      to="/modr-login"
+                      className="w-10 h-10 flex items-center justify-center bg-gray-200 text-gray-600 rounded-full hover:bg-gray-300 transition"
+                    >
+                      <FaUserShield size={20} />
+                    </Link>
+                    <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-max px-2 py-1 bg-gray-800 text-white text-xs rounded-md opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                      Login as Moderator
+                    </span>
+                  </div>
+              </div>
+
+              {message && (
+                <p className="mt-4 text-center text-red-500">{message}</p>
+              )}
+            </form>
+          </div>
+        </div>
       </div>
       {isLoading && <LoadingOverlay message="Logging in as Admin" />}
     </>
   );
 }
+
