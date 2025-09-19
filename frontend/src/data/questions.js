@@ -2,7 +2,7 @@ const evaluationQuestions = [
   {
     // C1: Course Organization and Content
     // Questions in this category evaluate how well the course was designed.
-    category: "C1",
+    category: "Course Organization and Content",
     questions: [
       { id: 1, text: "The course objectives were clearly communicated." },
       { id: 2, text: "The course materials (e.g., readings, handouts, etc.) were relevant and useful." },
@@ -12,7 +12,7 @@ const evaluationQuestions = [
   {
     // C2: Instructor's Knowledge and Presentation
     // This category assesses the instructor's knowledge and teaching style.
-    category: "C2",
+    category: "Instructor's Knowledge and Presentation",
     questions: [
       { id: 4, text: "The instructor demonstrated a strong knowledge of the subject matter." },
       { id: 5, text: "The instructor's explanations were clear and easy to understand." },
@@ -22,7 +22,7 @@ const evaluationQuestions = [
   {
     // C3: Communication and Interaction
     // Questions here measure how the instructor interacted with students and facilitated learning.
-    category: "C3",
+    category: "Communication and Interaction",
     questions: [
       { id: 7, text: "The instructor was responsive to student questions." },
       { id: 8, text: "The instructor created a respectful and supportive learning environment." },
@@ -32,7 +32,7 @@ const evaluationQuestions = [
   {
     // C4: Assessment and Feedback
     // This category evaluates how students were assessed throughout the course.
-    category: "C4",
+    category: "Assessment and Feedback",
     questions: [
       { id: 10, text: "The grading criteria for assignments and exams were clear." },
       { id: 11, text: "The feedback I received on my work was timely and helpful." },
@@ -42,7 +42,7 @@ const evaluationQuestions = [
   {
     // C5: Overall Effectiveness
     // These are broad, summary questions to gauge overall satisfaction and effectiveness.
-    category: "C5",
+    category: "Overall Effectiveness",
     questions: [
       { id: 13, text: "Overall, I would rate the instructor's teaching effectiveness as excellent." },
       { id: 14, text: "I would recommend this instructor to other students." },
