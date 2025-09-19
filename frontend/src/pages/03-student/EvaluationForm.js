@@ -170,7 +170,11 @@ export default function EvaluationForm() {
                 className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 rows="4"
                 placeholder="Enter your comments here..."
+                maxLength="250"
               ></textarea>
+              <div className="text-right text-sm text-gray-500 mt-1">
+                {remarks.length}/250
+              </div>
             </div>
           </div>
 
