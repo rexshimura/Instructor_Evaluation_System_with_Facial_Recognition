@@ -3,9 +3,9 @@ const moderators = [
     mod_ID: "M001",
     mod_username: "rexshimura",
     mod_password: "mod123", // In a real app, this should be a hashed password
-    mod_fname: "John",
-    mod_lname: "Doe",
-    mod_mname: "A.",
+    mod_fname: "Rex",
+    mod_lname: "Zahard",
+    mod_mname: "L.",
     date_created: "2024-05-20",
     created_by: "ADMIN",
   },
