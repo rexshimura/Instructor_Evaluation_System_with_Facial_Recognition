@@ -2,7 +2,8 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import InputText from "../../components/module_input/InputText";
 import InputDateOfBirth from "../../components/module_input/InputDateOfBirth";
-import students from "../../data/students";
+// import students from "../../data/students";
+import studentData from "../../data/list-students";
 import LoadingOverlay from "../../components/module_feedback/LoadingOverlay";
 import { FaArrowLeft, FaUserShield } from "react-icons/fa";
 
@@ -18,8 +19,8 @@ export default function StudentLogin() {
     setIsLoading(true);
 
     setTimeout(() => {
-      const foundStudent = students.find(
-        (s) => s.studentId === studentId && s.dob === dob
+      const foundStudent = studentData.find(
+        (s) => s.st_studID === studentId && s.st_dob === dob
       );
 
       if (foundStudent) {
