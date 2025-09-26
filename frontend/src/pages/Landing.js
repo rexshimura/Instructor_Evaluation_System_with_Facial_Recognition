@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { FaUserGraduate, FaChalkboardTeacher, FaShieldAlt } from "react-icons/fa";
 import ScrollToTopButton from "../components/module_feedback/ScrollToTopButton";
+import GeneralFooter from "../components/module_layout/GeneralFooter";
 
 export default function LandingPage() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -127,6 +128,7 @@ export default function LandingPage() {
         </div>
       </section>
       <ScrollToTopButton />
+      <GeneralFooter/>
     </div>
   );
 }
