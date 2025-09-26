@@ -1,12 +1,13 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import VerifyNavBar from "../../components/module_layout/VerifyNavBar";
-import instructors from "../../data/instructors";
-import subjectLoad from "../../data/subjectload";
+import instructorData from "../../data/list-instructors";
+import subjectLoad from "../../data/list-subjects";
+import evaluations from "../../data/list-evaluations";
+import { evaluationQuestions } from "../../data/questions";
 import analyzeRemarks from "../../utils/remarkAnalyzer";
-import calculatePerformance from "../../utils/performanceCalculator";
+import VerifyNavBar from "../../components/module_layout/VerifyNavBar";
 
-// Helper function to convert score to a descriptive word
+// --- Helper Functions & Constants ---
 const getScoreWord = (score) => {
   if (score >= 4.5) return "Excellent";
   if (score >= 3.5) return "Very Good";
@@ -15,215 +16,336 @@ const getScoreWord = (score) => {
   return "Poor";
 };
 
-export default function InstructorProfile() {
-  const { instructorID } = useParams();
+const SCORE_COLORS = {
+  Excellent: "bg-teal-500",
+  "Very Good": "bg-blue-500",
+  Average: "bg-yellow-500",
+  "Needs Improvement": "bg-orange-500",
+  Poor: "bg-red-500",
+};
 
-  // Correct: All hooks are called at the top level
-  const [selectedSubjectId, setSelectedSubjectId] = useState(null);
-  const [displayedData, setDisplayedData] = useState(null);
+// --- Child Components for better structure ---
 
-  const instructor = instructors.find((inst) => inst.instructorID === instructorID);
-  const subjects = subjectLoad.filter((sub) => sub.instructorID === instructorID);
+const LoadingSpinner = () => (
+  <div className="flex justify-center items-center h-64">
+    <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-blue-600"></div>
+  </div>
+);
 
-  // Use useMemo to prevent calculatePerformance from running on every render
-  const performanceData = useMemo(() => calculatePerformance(instructorID), [instructorID]);
+const EmptyState = ({ message }) => (
+  <div className="text-center bg-slate-50 p-8 rounded-lg h-full flex justify-center items-center">
+    <p className="text-slate-500 italic">{message}</p>
+  </div>
+);
 
-  useEffect(() => {
-    if (!performanceData) {
-      setDisplayedData(null);
-      return;
+const InfoCard = ({ title, children, icon }) => (
+  <div className="bg-slate-50 p-6 rounded-lg shadow-sm">
+    <h3 className="text-xl font-semibold mb-4 border-b pb-2 text-slate-800 flex items-center gap-3">
+      {icon}
+      {title}
+    </h3>
+    <div className="space-y-3 text-slate-700">{children}</div>
+  </div>
+);
+
+const ScoreBar = ({ category, score }) => {
+  const scoreWord = getScoreWord(score);
+  const barColor = SCORE_COLORS[scoreWord] || "bg-gray-400";
+  const barWidth = `${(score / 5) * 100}%`;
+
+  return (
+    <div>
+      <div className="flex justify-between items-center text-sm font-semibold text-slate-700 mb-1">
+        <span>{category}</span>
+        <span>
+          {scoreWord} ({score})
+        </span>
+      </div>
+      <div className="bg-slate-200 rounded-full h-3">
+        <div
+          className={`${barColor} rounded-full h-3 transition-all duration-500 ease-out`}
+          style={{ width: barWidth }}
+        />
+      </div>
+    </div>
+  );
+};
+
+const RemarksSummary = ({ summary }) => (
+  <div className="mb-6">
+    <p className="text-lg font-bold text-slate-800 mb-2">Remarks Summary</p>
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      <div className="bg-green-100 p-3 rounded-lg text-center border border-green-200">
+        <p className="text-2xl font-bold text-green-700">{summary.positiveCount}</p>
+        <p className="font-semibold text-sm text-green-800">👍 Positive</p>
+      </div>
+      <div className="bg-red-100 p-3 rounded-lg text-center border border-red-200">
+        <p className="text-2xl font-bold text-red-700">{summary.negativeCount}</p>
+        <p className="font-semibold text-sm text-red-800">👎 Negative</p>
+      </div>
+      <div className="bg-yellow-100 p-3 rounded-lg text-center border border-yellow-200">
+        <p className="text-2xl font-bold text-yellow-700">{summary.neutralCount}</p>
+        <p className="font-semibold text-sm text-yellow-800">😐 Neutral</p>
+      </div>
+    </div>
+  </div>
+);
+
+// --- Performance Calculation Logic (Unchanged) ---
+const calculatePerformance = (instructorID) => {
+    // ... (Your original calculation logic)
+    const processedEvaluations = [];
+    let tempEval = {};
+    evaluations.forEach(item => {
+        if (item.ev_evalID) {
+            if (Object.keys(tempEval).length > 0) processedEvaluations.push(tempEval);
+            tempEval = { ...item };
+        } else if (item.ev_scores) {
+            tempEval.ev_scores = item.ev_scores;
+        } else if (item.hasOwnProperty('ev_remarks')) {
+            tempEval.ev_remarks = item.ev_remarks;
+        }
+    });
+    if (Object.keys(tempEval).length > 0) processedEvaluations.push(tempEval);
+
+    const relevantEvaluations = processedEvaluations.filter(e => e.in_instID && e.in_instID.toString() === instructorID);
+    if (relevantEvaluations.length === 0) return null;
+
+    const performanceBySubject = {};
+    let allRemarks = [];
+    relevantEvaluations.forEach((evaluation) => {
+        const { sb_subID, ev_scores, ev_remarks } = evaluation;
+        if (!sb_subID || !ev_scores) return;
+        if (!performanceBySubject[sb_subID]) {
+            performanceBySubject[sb_subID] = { evaluations: [], remarks: [], totalScores: {}, averageCategoryScores: {} };
+            evaluationQuestions.forEach((cat) => {
+                performanceBySubject[sb_subID].totalScores[cat.category] = { total: 0, count: 0 };
+            });
+        }
+        performanceBySubject[sb_subID].evaluations.push(evaluation);
+        if (ev_remarks) {
+            performanceBySubject[sb_subID].remarks.push(ev_remarks);
+            allRemarks.push(ev_remarks);
+        }
+        evaluationQuestions.forEach((cat) => {
+            cat.questions.forEach((q) => {
+                const score = ev_scores[`q${q.id}`];
+                if (score !== undefined) {
+                    performanceBySubject[sb_subID].totalScores[cat.category].total += score;
+                    performanceBySubject[sb_subID].totalScores[cat.category].count += 1;
+                }
+            });
+        });
+    });
+
+    for (const subjectId in performanceBySubject) {
+        const subjectData = performanceBySubject[subjectId];
+        for (const category in subjectData.totalScores) {
+            const { total, count } = subjectData.totalScores[category];
+            subjectData.averageCategoryScores[category] = count > 0 ? (total / count).toFixed(2) : "0.00";
+        }
     }
 
+    const overallTotalScores = {};
+    evaluationQuestions.forEach((cat) => {
+        overallTotalScores[cat.category] = { total: 0, count: 0 };
+    });
+    for (const subjectId in performanceBySubject) {
+        for (const category in performanceBySubject[subjectId].totalScores) {
+            overallTotalScores[category].total += performanceBySubject[subjectId].totalScores[category].total;
+            overallTotalScores[category].count += performanceBySubject[subjectId].totalScores[category].count;
+        }
+    }
+
+    const overallAverageCategoryScores = {};
+    for (const category in overallTotalScores) {
+        const { total, count } = overallTotalScores[category];
+        overallAverageCategoryScores[category] = count > 0 ? (total / count).toFixed(2) : "0.00";
+    }
+
+    return { performanceBySubject, overallAverageCategoryScores, overallRemarks: allRemarks, totalEvaluations: relevantEvaluations.length };
+};
+
+
+// --- Main Profile Component ---
+export default function InstructorProfile() {
+  const { instructorID } = useParams();
+  const [selectedSubjectId, setSelectedSubjectId] = useState(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const instructor = useMemo(() =>
+    instructorData.find((inst) => inst.in_instructorID.toString() === instructorID),
+    [instructorID]
+  );
+
+  const subjectsHandled = useMemo(() => {
+    if (!instructor) return [];
+    return subjectLoad.filter((sub) =>
+      instructor.in_subhandled.includes(sub.sb_subID)
+    );
+  }, [instructor]);
+
+  const performanceData = useMemo(
+    () => calculatePerformance(instructorID),
+    [instructorID]
+  );
+
+  // NEW/REFINED: UseMemo is more efficient for deriving state.
+  // It instantly recalculates when its dependencies change, removing the need for a loading spinner on subject change.
+  const displayedData = useMemo(() => {
+    if (!performanceData) return null;
+
     if (selectedSubjectId) {
-      const subjectData = performanceData.performanceBySubject[selectedSubjectId];
-      if (subjectData) {
-        setDisplayedData({
-          averageCategoryScores: subjectData.averageCategoryScores,
-          remarks: subjectData.remarks,
-          totalReviews: subjectData.evaluations.length,
-        });
-      }
-    } else {
-      setDisplayedData({
+        const subjectData = performanceData.performanceBySubject[selectedSubjectId];
+        if (subjectData) {
+            return {
+                averageCategoryScores: subjectData.averageCategoryScores,
+                remarks: subjectData.remarks,
+                totalReviews: subjectData.evaluations.length,
+            };
+        }
+    }
+
+    // Fallback to overall data if no subject is selected or found
+    return {
         averageCategoryScores: performanceData.overallAverageCategoryScores,
         remarks: performanceData.overallRemarks,
         totalReviews: performanceData.totalEvaluations,
-      });
-    }
-  }, [selectedSubjectId, performanceData]);
+    };
+  }, [performanceData, selectedSubjectId]);
 
+  // NEW/REFINED: This effect now only handles the initial loading spinner.
+  // The empty dependency array [] means it runs only ONCE when the component mounts.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+        setIsLoading(false);
+    }, 300); // Simulate initial processing time to avoid layout flash
 
-  // Conditional return comes after all hooks
+    return () => clearTimeout(timer);
+  }, []);
+
   if (!instructor) {
     return (
-      <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-6">
-        <VerifyNavBar />
-        <div className="text-center mt-16">
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center p-6">
+        <div className="text-center">
           <h2 className="text-2xl font-bold text-red-600">Instructor Not Found</h2>
-          <p className="text-gray-600 mt-2">
-            The profile you are looking for does not exist.
-          </p>
+          <p className="text-slate-600 mt-2">The profile you are looking for does not exist.</p>
         </div>
       </div>
     );
   }
 
   const remarksSummary = displayedData ? analyzeRemarks(displayedData.remarks) : null;
-
-  const getBarWidth = (score) => {
-    const percentage = (score / 5) * 100;
-    return `${percentage}%`;
-  };
+  const hasRemarks = displayedData?.remarks?.filter(r => r && r.trim()).length > 0;
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col items-center p-6">
+    <div className="min-h-screen bg-slate-100 flex flex-col items-center p-4 sm:p-6">
       <VerifyNavBar />
-      <div className="relative w-full max-w-7xl bg-white rounded-lg shadow-xl p-8 mt-16">
-        <h2 className="text-3xl font-bold text-center text-blue-600 mb-6">Instructor Profile</h2>
-        <div className="bg-blue-50 p-6 rounded-lg mb-8">
-          <h3 className="text-2xl font-semibold mb-4 border-b pb-2 text-gray-800">
-            {`${instructor.fname} ${instructor.mname ? instructor.mname + ' ' : ''}${instructor.lname}`}
-          </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-gray-700">
-            <div>
-              <p>
-                <strong>ID:</strong> {instructor.instructorID}
-              </p>
-              <p>
-                <strong>Department:</strong> {instructor.department}
-              </p>
-              <p>
-                <strong>Email:</strong> {instructor.email}
-              </p>
-            </div>
-            <div>
-              <p>
-                <strong>Contact:</strong> {instructor.contactNumber}
-              </p>
-              <p>
-                <strong>Sex:</strong> {instructor.sex}
-              </p>
-              <p>
-                <strong>Date of Birth:</strong> {instructor.dob}
-              </p>
-            </div>
-          </div>
-        </div>
+      <main className="w-full max-w-7xl bg-white rounded-lg shadow-xl p-6 sm:p-8 mt-16 space-y-8">
+        <header>
+          <h2 className="text-3xl font-bold text-center text-blue-700 mb-2">
+            Instructor Profile
+          </h2>
+          <p className="text-center text-slate-500">Performance and information overview</p>
+        </header>
 
-        <div className="mb-8">
-          <h3 className="text-2xl font-semibold mb-4 border-b pb-2 text-gray-800">
-            Subjects Handled
-          </h3>
-          <div className="flex flex-wrap gap-4">
-            <div
-              className={`flex-none cursor-pointer p-4 rounded-lg shadow-sm border ${!selectedSubjectId ? 'bg-blue-50 border-blue-600 font-bold' : 'bg-gray-50'}`}
+        {/* --- Instructor Information --- */}
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <InfoCard title="Personal Information" icon="👤">
+            <p><strong>Full Name:</strong> {`${instructor.in_fname} ${instructor.in_mname} ${instructor.in_lname} ${instructor.in_suffix}`}</p>
+            <p><strong>Date of Birth:</strong> {instructor.in_dob}</p>
+            <p><strong>Sex:</strong> {instructor.in_sex === 'M' ? 'Male' : 'Female'}</p>
+            <p><strong>Department:</strong> {instructor.in_dept}</p>
+          </InfoCard>
+          <InfoCard title="Contact Details" icon="📞">
+            <p><strong>Email:</strong> <a href={`mailto:${instructor.in_email}`} className="text-blue-600 hover:underline">{instructor.in_email}</a></p>
+            <p><strong>Contact Number:</strong> {instructor.in_cnum}</p>
+          </InfoCard>
+        </section>
+
+        {/* --- Subjects Handled --- */}
+        <section>
+          <h3 className="text-2xl font-semibold mb-4 border-b pb-2 text-slate-800">Subjects Handled</h3>
+          <div className="flex flex-wrap gap-3">
+            <button
               onClick={() => setSelectedSubjectId(null)}
+              className={`p-3 rounded-lg shadow-sm border transition-all duration-200 ${
+                !selectedSubjectId
+                  ? "bg-blue-600 text-white border-blue-700 font-bold"
+                  : "bg-white hover:bg-blue-50 hover:border-blue-300"
+              }`}
             >
-              <p className="font-medium text-lg text-gray-800">View All</p>
-                <p className="text-sm text-gray-600">View Overall Performance</p>
-            </div>
-            {subjects.length > 0 ? (
-              subjects.map((subject) => (
-                <div
-                  key={subject.subjectID}
-                  className={`flex-none cursor-pointer p-4 rounded-lg shadow-sm border ${selectedSubjectId === subject.subjectID ? 'bg-blue-50 border-blue-600 font-bold' : 'bg-gray-50'}`}
-                  onClick={() => setSelectedSubjectId(subject.subjectID)}
-                >
-                  <p className="font-medium text-lg text-gray-800">{subject.subjectName}</p>
-                  <p className="text-sm text-gray-600">
-                    {`MIS Code: ${subject.miscode} | Course: ${subject.course} | Semester: ${subject.semester}`}
-                  </p>
-                </div>
-              ))
-            ) : null}
+              <p className="font-medium">Overall Performance</p>
+            </button>
+            {subjectsHandled.map((subject) => (
+              <button
+                key={subject.sb_subID}
+                onClick={() => setSelectedSubjectId(subject.sb_subID)}
+                className={`p-3 text-left rounded-lg shadow-sm border transition-all duration-200 ${
+                  selectedSubjectId === subject.sb_subID
+                    ? "bg-blue-600 text-white border-blue-700 font-bold"
+                    : "bg-white hover:bg-blue-50 hover:border-blue-300"
+                }`}
+              >
+                <p className="font-medium">{subject.sb_name}</p>
+                <p className="text-sm opacity-80">{`Code: ${subject.sb_miscode} | Units: ${subject.sb_units}`}</p>
+              </button>
+            ))}
           </div>
-          {subjects.length === 0 && (
-            <p className="text-gray-500 text-center mt-4">
-              No subjects found for this instructor.
-            </p>
-          )}
-        </div>
+        </section>
 
-        <div className="mt-8">
-          <h3 className="text-2xl font-semibold mb-4 border-b pb-2 text-gray-800">
-            Performance Metrics
-          </h3>
-          {displayedData ? (
-            <div className="space-y-6">
-              <div className="bg-blue-100 p-4 rounded-lg">
-                <p className="text-lg font-bold text-blue-800 mb-4">
-                  {selectedSubjectId ?
-                    `Performance for ${subjects.find(s => s.subjectID === selectedSubjectId).subjectName}`
-                    : 'Overall Performance'
-                  } ({displayedData.totalReviews} reviews)
-                </p>
+        {/* --- Performance Metrics --- */}
+        <section>
+          <h3 className="text-2xl font-semibold mb-4 border-b pb-2 text-slate-800">Performance Metrics</h3>
+          {isLoading ? (
+            <LoadingSpinner />
+          ) : displayedData ? (
+            <div className="bg-slate-50 p-6 rounded-lg">
+              <p className="text-xl font-bold text-slate-800 mb-4">
+                {selectedSubjectId
+                  ? `Results for ${subjectsHandled.find(s => s.sb_subID === selectedSubjectId)?.sb_name || 'Subject'}`
+                  : "Overall Performance Summary"}
+                <span className="text-base font-normal text-slate-600 ml-2">
+                  ({displayedData.totalReviews} reviews)
+                </span>
+              </p>
 
-                <div className="max-w-2xl mx-auto space-y-4">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="space-y-4">
                   {Object.entries(displayedData.averageCategoryScores).map(([category, score]) => (
-                    <div key={category}>
-                      {/* --- MODIFICATION START --- */}
-                      <div className="flex justify-between items-center text-sm font-semibold text-gray-700">
-                        <span>{category}</span>
-                        <span>{getScoreWord(score)} ({score})</span>
-                      </div>
-                      {/* --- MODIFICATION END --- */}
-                      <div className="bg-gray-200 rounded-full h-4 mt-1">
-                        <div
-                          className="bg-blue-500 rounded-full h-4 transition-all duration-500"
-                          style={{ width: getBarWidth(score) }}
-                        ></div>
-                      </div>
-                    </div>
+                    <ScoreBar key={category} category={category} score={parseFloat(score)} />
                   ))}
                 </div>
 
-                {remarksSummary && displayedData.totalReviews > 0 && (
-                  <div className="mt-8">
-                    <p className="text-lg font-bold text-gray-800 mb-2">Remarks Summary</p>
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="bg-green-200 p-3 rounded-lg text-center">
-                        <p className="text-xl">✅</p>
-                        <p className="text-sm font-semibold text-green-800 mt-1">Positive</p>
-                        <p className="text-xl font-bold">{remarksSummary.positiveCount}</p>
-                      </div>
-                      <div className="bg-red-200 p-3 rounded-lg text-center">
-                        <p className="text-xl">❌</p>
-                        <p className="text-sm font-semibold text-red-800 mt-1">Negative</p>
-                        <p className="text-xl font-bold">{remarksSummary.negativeCount}</p>
-                      </div>
-                      <div className="bg-yellow-200 p-3 rounded-lg text-center">
-                        <p className="text-xl">⚪</p>
-                        <p className="text-sm font-semibold text-yellow-800 mt-1">Neutral</p>
-                        <p className="text-xl font-bold">{remarksSummary.neutralCount}</p>
-                      </div>
-                    </div>
+                <div>
+                  {remarksSummary && displayedData.totalReviews > 0 && (
+                    <RemarksSummary summary={remarksSummary} />
+                  )}
+                  <div>
+                    <p className="text-lg font-bold text-slate-800 mb-2">Student Remarks</p>
+                    <ul className="space-y-2 h-36 overflow-y-auto bg-white p-3 rounded border border-slate-200 custom-scrollbar">
+                      {hasRemarks ? (
+                        displayedData.remarks.filter(r => r && r.trim()).map((remark, index) => (
+                          <li key={index} className="border-l-4 border-blue-300 pl-3 text-slate-700 italic text-sm">
+                            "{remark}"
+                          </li>
+                        ))
+                      ) : (
+                         <EmptyState message="No remarks available for this view." />
+                      )}
+                    </ul>
                   </div>
-                )}
-
-                <div className="mt-8">
-                  <p className="text-lg font-bold text-gray-800 mb-2">Remarks</p>
-                  <ul className="space-y-2 max-h-60 overflow-y-auto">
-                    {displayedData.remarks.filter(remark => remark.trim() !== '').length > 0 ? (
-                      displayedData.remarks.filter(remark => remark.trim() !== '').map((remark, index) => (
-                        <li key={index} className="bg-white p-3 rounded-lg text-gray-700 italic">
-                          "{remark}"
-                        </li>
-                      ))
-                    ) : (
-                      <p className="text-gray-500 italic text-center">No remarks available for this view.</p>
-                    )}
-                  </ul>
                 </div>
-
               </div>
             </div>
           ) : (
-            <p className="text-gray-500 italic text-center">
-              Performance data is not yet available.
-            </p>
+            <EmptyState message="No performance data available for this instructor yet." />
           )}
-        </div>
-      </div>
+        </section>
+      </main>
+      <footer className="w-full max-w-7xl mt-8 p-4 text-center text-slate-500 text-sm">
+        <p>&copy; {new Date().getFullYear()} Instructor Evaluation System. All rights reserved.</p>
+      </footer>
     </div>
   );
 }
