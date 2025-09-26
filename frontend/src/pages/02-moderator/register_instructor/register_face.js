@@ -1,6 +1,19 @@
 import React, { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
-import InputSearch from "../../../components/module_input/InputSearch_Instructor";
+import { useNavigate, useParams } from "react-router-dom";
+import instructorData from "../../../data/list-instructors";
+
+// --- Helper: Age Calculation ---
+const calculateAge = (dob) => {
+  if (!dob) return "N/A";
+  const birthDate = new Date(dob);
+  const today = new Date();
+  let age = today.getFullYear() - birthDate.getFullYear();
+  const m = today.getMonth() - birthDate.getMonth();
+  if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+    age--;
+  }
+  return age;
+};
 
 // --- Loading Overlay ---
 const LoadingOverlay = ({ message = "Loading..." }) => (
@@ -53,10 +66,57 @@ const ModeratorFormNavBar = () => {
   );
 };
 
+// --- Instructor Search ---
+const InstructorSearch = ({ onSelect, navigate }) => {
+  const [query, setQuery] = useState("");
+  const filtered = instructorData.filter((inst) => {
+    const fullName = `${inst.in_fname} ${inst.in_lname}`.toLowerCase();
+    return (
+      fullName.includes(query.toLowerCase()) ||
+      inst.in_dept.toLowerCase().includes(query.toLowerCase())
+    );
+  });
+
+  return (
+    <div className="w-full">
+      <input
+        type="text"
+        placeholder="Search instructor by name or department..."
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        className="w-full p-2 border rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500"
+      />
+      {query && (
+        <div className="mt-2 bg-white border rounded-lg shadow-md max-h-60 overflow-y-auto">
+          {filtered.length > 0 ? (
+            filtered.map((inst) => (
+              <div
+                key={inst.in_instructorID}
+                onClick={() => {
+                  onSelect(inst);
+                  navigate(`/mod-record-face/${inst.in_instructorID}`);
+                }}
+                className="p-2 hover:bg-blue-100 cursor-pointer"
+              >
+                {inst.in_fname} {inst.in_mname ? inst.in_mname[0] + "." : ""}{" "}
+                {inst.in_lname} {inst.in_suffix} -{" "}
+                <span className="text-sm text-gray-500">{inst.in_dept}</span>
+              </div>
+            ))
+          ) : (
+            <p className="p-2 text-gray-500">No instructors found</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // --- Main Component ---
 const FaceRecord = () => {
   const videoRef = useRef(null);
   const navigate = useNavigate();
+  const { instructorID } = useParams();
 
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState("Initializing...");
@@ -77,7 +137,17 @@ const FaceRecord = () => {
     { id: "right", text: "Turn your head to the right." },
   ];
 
-  // Start camera only after instructor is selected
+  // If instructorID exists in URL, auto-select
+  useEffect(() => {
+    if (instructorID) {
+      const found = instructorData.find(
+        (inst) => String(inst.in_instructorID) === String(instructorID)
+      );
+      if (found) setSelectedInstructor(found);
+    }
+  }, [instructorID]);
+
+  // Start/stop camera when instructor is selected
   useEffect(() => {
     if (selectedInstructor) startCamera();
     return () => stopCamera();
@@ -163,7 +233,7 @@ const FaceRecord = () => {
   const handleComplete = () => {
     setIsLoading(true);
     setLoadingMessage("Submitting...");
-    stopCamera(); // 🔴 Close camera before submitting
+    stopCamera();
     console.log("Instructor:", selectedInstructor);
     console.log("Captured images:", capturedImages);
     setTimeout(() => navigate("/mod-panel"), 2000);
@@ -183,16 +253,36 @@ const FaceRecord = () => {
               <p className="mb-4 text-gray-600">
                 Search for an instructor first:
               </p>
-              <InputSearch onSelect={(ins) => setSelectedInstructor(ins)} />
+              <InstructorSearch
+                onSelect={(ins) => setSelectedInstructor(ins)}
+                navigate={navigate}
+              />
             </>
           ) : scanState !== "finished" ? (
             <>
-              <p className="mb-4 text-gray-600">
-                Instructor:{" "}
-                <span className="font-semibold text-blue-700">
-                  {selectedInstructor.fname} {selectedInstructor.lname}
-                </span>
-              </p>
+              {/* Instructor Info */}
+              <div className="mb-6 p-4 bg-blue-50 rounded-lg border border-blue-200 text-gray-800">
+                <h3 className="text-xl font-bold mb-2">
+                  Instructor Information
+                </h3>
+                <p>
+                  <strong>Name:</strong> {selectedInstructor.in_fname}{" "}
+                  {selectedInstructor.in_mname
+                    ? selectedInstructor.in_mname[0] + "."
+                    : ""}{" "}
+                  {selectedInstructor.in_lname} {selectedInstructor.in_suffix}
+                </p>
+                <p>
+                  <strong>Age:</strong>{" "}
+                  {calculateAge(selectedInstructor.in_dob)}
+                </p>
+                <p>
+                  <strong>Sex:</strong> {selectedInstructor.in_sex}
+                </p>
+                {/*<p>*/}
+                {/*  <strong>Department:</strong> {selectedInstructor.in_dept}*/}
+                {/*</p>*/}
+              </div>
 
               <p className="mb-4 font-medium">{steps[currentStep].text}</p>
 
