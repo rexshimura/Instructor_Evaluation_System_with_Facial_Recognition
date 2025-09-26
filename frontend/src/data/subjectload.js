@@ -1,7 +1,7 @@
-const subjectLoad = [
+const subjectLoadx = [
   // James Reyes's subjects
   {
-    subjectID: "SUB01",
+    subjectID: "1",
     instructorID: "INS02",
     subjectName: "Database Systems",
     miscode: "PC315",
@@ -95,4 +95,4 @@ const subjectLoad = [
   },
 ];
 
-export default subjectLoad;
+export default subjectLoadx;
