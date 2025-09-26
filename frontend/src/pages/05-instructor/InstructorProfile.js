@@ -343,9 +343,9 @@ export default function InstructorProfile() {
           )}
         </section>
       </main>
-      <footer className="w-full max-w-7xl mt-8 p-4 text-center text-slate-500 text-sm">
-        <p>&copy; {new Date().getFullYear()} Instructor Evaluation System. All rights reserved.</p>
-      </footer>
+      {/*<footer className="w-full max-w-7xl mt-8 p-4 text-center text-slate-500 text-sm">*/}
+      {/*  <p>&copy; {new Date().getFullYear()} Instructor Evaluation System. All rights reserved.</p>*/}
+      {/*</footer>*/}
     </div>
   );
 }
