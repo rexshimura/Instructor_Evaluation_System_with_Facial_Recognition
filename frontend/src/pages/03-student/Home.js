@@ -2,7 +2,6 @@ import React from "react";
 import StudentNavBar from "../../components/module_layout/StudentNavBar";
 
 export default function Home() {
-  // Retrieve the 03-student data from session storage
   const userString = sessionStorage.getItem("user");
   const student = userString ? JSON.parse(userString) : null;
 
@@ -14,10 +13,10 @@ export default function Home() {
         {student ? (
           <>
             <h2 className="text-3xl font-bold mb-4">
-              Welcome, {student.firstName} {student.lastName}! 🎓
+              Welcome, {student.st_fname} {student.st_lname}! 🎓
             </h2>
             <p className="text-gray-700">
-              {student.course} - Year {student.year}, Semester {student.semester}
+              {student.st_course} - Year {student.st_year}, Semester {student.st_semester}
             </p>
           </>
         ) : (
