@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import instructors from '../../data/instructors';
-import subjectLoadData from '../../data/subjectload';
+import instructorData from '../../data/list-instructors';
+import subjectLoad from '../../data/list-subjects';
 import LoadingOverlay from '../../components/module_feedback/LoadingOverlay';
 import ScoreSelector from '../../components/module_selector/ScoreSelector';
 import EvaluationFormNavBar from '../../components/module_layout/EvaluationFormNavBar';
@@ -19,7 +19,6 @@ const categoryDetails = {
   C5: { title: "Overall Effectiveness", description: "These are broad, summary questions to gauge overall satisfaction and effectiveness." },
 };
 
-
 export default function EvaluationForm() {
   const { instructorID, subjectID } = useParams();
   const navigate = useNavigate();
@@ -30,12 +29,16 @@ export default function EvaluationForm() {
   const [scores, setScores] = useState(
     allQuestions.reduce((acc, q) => ({ ...acc, [q.id]: 0 }), {})
   );
-  const [remarks, setRemarks] = useState(""); // State for the remarks text field
+  const [remarks, setRemarks] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const instructor = instructors.find(inst => inst.instructorID === instructorID);
-  const subject = subjectLoadData.find(
-    sub => sub.subjectID === subjectID && sub.instructorID === instructorID
+  // ✅ Match how StudentInstructorListPage passes params
+  const instructor = instructorData.find(
+    inst => String(inst.in_instructorID) === String(instructorID)
+  );
+
+  const subject = subjectLoad.find(
+    sub => String(sub.sb_subID) === String(subjectID)
   );
 
   if (!instructor || !subject) {
@@ -46,8 +49,8 @@ export default function EvaluationForm() {
     );
   }
 
-  const redactedEmail = `${instructor.email.substring(0, 3)}***@***${instructor.email.split('@')[1]}`;
-  const redactedContact = `${instructor.contactNumber.substring(0, 2)}***${instructor.contactNumber.substring(instructor.contactNumber.length - 2)}`;
+  const redactedEmail = `${instructor.in_email.substring(0, 3)}***@***${instructor.in_email.split('@')[1]}`;
+  const redactedContact = `${instructor.in_cnum.substring(0, 2)}***${instructor.in_cnum.substring(instructor.in_cnum.length - 2)}`;
 
   const handleScoreChange = (questionId, score) => {
     setScores(prev => ({ ...prev, [questionId]: score }));
@@ -65,11 +68,11 @@ export default function EvaluationForm() {
     setIsLoading(true);
 
     const evaluationData = {
-      instructorID: instructorID,
-      subjectID: subjectID,
+      instructorID: instructor.in_instructorID,
+      subjectID: subject.sb_subID,
       evaluationDate: new Date().toISOString(),
       scores: scores,
-      remarks: remarks, // Include remarks in the submission data
+      remarks: remarks,
     };
 
     console.log("Submitting Evaluation:", evaluationData);
@@ -94,7 +97,6 @@ export default function EvaluationForm() {
     }
   };
 
-
   return (
     <div className="bg-gray-100 min-h-screen flex flex-col">
       {isLoading && <LoadingOverlay message="Submitting evaluation..." />}
@@ -110,24 +112,28 @@ export default function EvaluationForm() {
             <div className="flex items-center space-x-4 mb-4 pb-4 border-b border-gray-200">
               <img
                 src={instructor.face || "/default-face.png"}
-                alt={`${instructor.fname} ${instructor.lname}`}
+                alt={`${instructor.in_fname} ${instructor.in_lname}`}
                 className="w-24 h-24 rounded-full object-cover border-4 border-blue-200"
               />
               <div>
                 <h2 className="text-2xl font-bold">
-                  {instructor.fname} {instructor.mname[0] ? instructor.mname[0] + "." : ""} {instructor.lname} {instructor.suffix}
+                  {instructor.in_fname}{" "}
+                  {instructor.in_mname ? instructor.in_mname[0] + "." : ""}{" "}
+                  {instructor.in_lname} {instructor.in_suffix}
                 </h2>
-                <p className="text-gray-600">{instructor.department}</p>
+                <p className="text-gray-600">{instructor.in_dept}</p>
               </div>
             </div>
 
             {/* Subject Info */}
             <div className="bg-blue-50 border-l-4 border-blue-400 text-blue-800 p-4 rounded-lg mb-6">
               <p className="font-bold text-lg">
-                <span className="text-blue-600">Subject:</span> {subject.subjectName} ({subject.miscode})
+                <span className="text-blue-600">Subject:</span>{" "}
+                {subject.sb_name} ({subject.sb_miscode})
               </p>
               <p className="text-sm">
-                <span className="font-semibold text-blue-600">Course & Year:</span> {subject.course}, Year {subject.year}
+                <span className="font-semibold text-blue-600">Course & Year:</span>{" "}
+                {subject.sb_course}, Year {subject.sb_year}
               </p>
             </div>
 
@@ -140,16 +146,23 @@ export default function EvaluationForm() {
 
           {/* Evaluation Questions by Category */}
           <div className="bg-white shadow-lg rounded-lg p-6 mb-8">
-            <h3 className="text-2xl font-semibold text-gray-800 mb-4">Evaluation</h3>
+            <h3 className="text-2xl font-semibold text-gray-800 mb-4 text-center">Evaluation</h3>
             {evaluationQuestions.map(category => (
               <div key={category.category} className="mb-10 p-4 border rounded-lg">
-                <h4 className="text-xl font-bold text-gray-800 mb-2">
+                <h4 className="text-xl font-bold text-gray-800 mb-2 text-center">
                   {categoryDetails[category.category]?.title || category.category}
                 </h4>
-                 <p className="text-sm text-gray-500 mb-6">{categoryDetails[category.category]?.description}</p>
+                <p className="text-sm text-gray-500 mb-6 text-center">
+                  {categoryDetails[category.category]?.description}
+                </p>
                 {category.questions.map(q => (
-                  <div key={q.id} className="mb-8">
-                    <label className="block text-gray-700 font-semibold mb-6">{q.text}</label>
+                  <div
+                    key={q.id}
+                    className="mb-8 text-center flex flex-col items-center"
+                  >
+                    <label className="block text-gray-700 font-semibold mb-6 max-w-xl">
+                      {q.text}
+                    </label>
                     <ScoreSelector
                       questionId={q.id}
                       currentScore={scores[q.id]}
@@ -162,7 +175,9 @@ export default function EvaluationForm() {
 
             {/* Remarks Section */}
             <div className="mb-10 p-4 border rounded-lg">
-              <label htmlFor="remarks" className="block text-gray-700 font-semibold mb-4">{remarksQuestion.text}</label>
+              <label htmlFor="remarks" className="block text-gray-700 font-semibold mb-4 text-center">
+                {remarksQuestion.text}
+              </label>
               <textarea
                 id="remarks"
                 value={remarks}
@@ -197,4 +212,3 @@ export default function EvaluationForm() {
     </div>
   );
 }
-
