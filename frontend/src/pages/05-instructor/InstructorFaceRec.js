@@ -4,7 +4,12 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaUserCircle } from "react-icons/fa";
 import VerifyNavBar from "../../components/module_layout/VerifyNavBar";
-import instructors from "../../data/instructors";
+import rawInstructorData from "../../data/list-instructors";
+
+// Normalize instructor data in case it's wrapped
+const instructors = Array.isArray(rawInstructorData)
+  ? rawInstructorData
+  : rawInstructorData.instructors || [];
 
 export default function InstructorFaceRec() {
   const [selectedInstructorID, setSelectedInstructorID] = useState("");
@@ -12,8 +17,6 @@ export default function InstructorFaceRec() {
 
   const handleViewProfile = () => {
     if (selectedInstructorID) {
-      // This is the correct way to navigate to a dynamic URL
-      // by using template literals to build the path.
       navigate(`/instructor-profile/${selectedInstructorID}`);
     }
   };
@@ -22,7 +25,6 @@ export default function InstructorFaceRec() {
     <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-6">
       <VerifyNavBar />
       <div className="relative w-full max-w-lg bg-white rounded-lg shadow-xl p-8 mt-16">
-
         {/* Header */}
         <div className="flex flex-col items-center mb-6">
           <FaUserCircle className="text-5xl text-blue-600 mb-2" />
@@ -30,7 +32,8 @@ export default function InstructorFaceRec() {
             Face Recognition
           </h2>
           <p className="text-center text-gray-500 text-sm mt-2">
-            None for now, so temporarily <br/>please select an instructor from the list below.
+            Face recognition is not available yet. <br />
+            Please select an instructor from the list below.
           </p>
         </div>
 
@@ -41,15 +44,17 @@ export default function InstructorFaceRec() {
             onChange={(e) => setSelectedInstructorID(e.target.value)}
             className="w-full max-w-xs p-3 border border-gray-300 rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
-            <option value="" disabled>Select an instructor</option>
-            {instructors.map((instructor) => (
-              <option key={instructor.instructorID} value={instructor.instructorID}>
-                {`${instructor.fname} ${instructor.lname}`}
+            <option value="" disabled>
+              Select an instructor
+            </option>
+            {instructors.map((inst) => (
+              <option key={inst.in_instructorID} value={inst.in_instructorID}>
+                {inst.in_fname} {inst.in_lname} - {inst.in_dept}
               </option>
             ))}
           </select>
 
-          {/* Action button */}
+          {/* Action Button */}
           <button
             onClick={handleViewProfile}
             disabled={!selectedInstructorID}
