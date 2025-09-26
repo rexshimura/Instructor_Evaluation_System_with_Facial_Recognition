@@ -1,10 +1,10 @@
 const lexicon = {
   positive: {
-    "good": 1, "great": 2, "excellent": 3, "best": 3, "outstanding": 3, "fantastic": 2,
+    "good": 1, "love": 1, "great": 2, "excellent": 3, "best": 3, "outstanding": 3, "fantastic": 2,
     "awesome": 2, "wonderful": 2, "terrific": 2, "superb": 2, "brilliant": 2,
     "helpful": 1, "knowledgeable": 1, "approachable": 1, "engaging": 1, "clear": 1,
     "effective": 1, "insightful": 1, "responsive": 1, "caring": 1, "supportive": 1, "patient": 1,
-    "organized": 1, "thorough": 1, "fair": 1, "passionate": 1, "welcoming": 1, "easy": 1,
+    "thorough": 1, "fair": 1, "passionate": 1, "welcoming": 1, "easy": 1,
     "simple": 1, "interesting": 1, "concise": 1, "informative": 1, "inspiring": 1,
     "encouraging": 1, "masterful": 2, "impressive": 2, "well-structured": 2,
     "understandable": 1, "comprehensible": 1, "accommodating": 1, "flexible": 1,
@@ -14,22 +14,21 @@ const lexicon = {
     "loved": 2, "liked": 1, "excited": 1, "grateful": 2, "happy": 1, "satisfied": 1,
     "pleasant": 1, "compelling": 2, "innovative": 2, "thoughtful": 2, "meticulous": 2,
     "well-researched": 2, "dynamic": 2, "interactive": 2, "collaborative": 2,
-    "resourceful": 2, "empowering": 2, "enriching": 2, "rewarding": 2, "valuable": 2,
-    "effective": 2, "transformative": 3, "life-changing": 3, "pedagogical": 2,
+    "resourceful": 2, "empowering": 2, "transformative": 3, "life-changing": 3, "pedagogical": 2,
     "rigorous": 1, "challenging": 1, "respectful": 2, "empathetic": 2, "understanding": 2,
     "considerate": 2, "clear-cut": 1, "organized": 2, "efficient": 1, "engrossing": 2,
     "captivating": 2, "mind-expanding": 3, "intellectually stimulating": 3,
     "fostered curiosity": 2, "enlightening": 2, "illuminating": 2, "instructive": 2,
     "masterfully-taught": 3, "an absolute lifesaver": 3, "a true inspiration": 3,
-    "made learning fun": 2, "commendable": 2, "praiseworthy": 2, "admirable": 2,
-    "encouraged growth": 2, "okay": 0.5, "alright": 0.5, "fine": 0.5, "decent": 0.5
+    "made learning fun": 2, "commendable": 2, "praiseworthy": 2, "admirable": 2, "useful": 0.5,
+    "encouraged growth": 2, "okay": 0.5, "alright": 0.5, "fine": 0.5, "decent": 0.5, "encourages": 1,
   },
 
   negative: {
-    "bad": -1, "poor": -1, "terrible": -2, "awful": -2, "horrible": -2, "disappointing": -1,
+    "bad": -1, "hate": -2, "poor": -1, "terrible": -2, "awful": -2, "horrible": -2, "disappointing": -1,
     "confusing": -1, "unclear": -1, "boring": -1, "vague": -1, "slow": -1, "unhelpful": -1,
-    "unresponsive": -1, "hard": -1, "difficult": -2, "complicated": -1, "disorganized": -1,
-    "rushed": -1, "lacks": -2, "fails": -2, "struggled": -2, "unprofessional": -1,
+    "unresponsive": -1, "hard": -1, "difficult": -2, "complicated": -1, "stupid": -1,
+    "rushed": -1, "lacks": -2, "fails": -2, "struggled": -2,
     "frustrating": -2, "annoying": -1, "irrelevant": -1, "messy": -1, "unnecessary": -1,
     "conflicted": -1, "unengaging": -1, "abrupt": -1, "tedious": -2, "monotonous": -2,
     "overwhelming": -2, "unstructured": -1, "ambiguous": -1, "redundant": -1,
@@ -42,7 +41,7 @@ const lexicon = {
     "inefficient": -1, "unprofessional": -2, "unfocused": -1, "unproductive": -1,
     "underwhelming": -2, "lackluster": -2, "uninspiring": -2, "mind-numbing": -3,
     "incoherent": -2, "outdated": -1, "unreasonable": -2, "disorganized": -2,
-    "disconcerting": -2, "unfavorable": -1
+    "disconcerting": -2, "unfavorable": -1, "devil": -1, "terror": -2, "worst": -2,
   },
 
   negation: new Set(["not", "n't", "never", "no", "without", "lacking", "lacks", "don't", "can't", "didn't", "won't", "shouldn't", "couldn't", "wasn't", "isn't", "aren't", "weren't"]),
@@ -118,7 +117,8 @@ const lexicon = {
     "stuck to the book": -1,
     "I barely passed": -1,
     "I had to teach myself": -2,
-    "the course website was a mess": -2
+    "the course website was a mess": -2,
+    "langayan": -1
   }
 };
 

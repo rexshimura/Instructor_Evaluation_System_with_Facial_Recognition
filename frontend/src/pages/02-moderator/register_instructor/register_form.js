@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import ModeratorFormNavBar from "../../../components/module_layout/Moderator-FormNavbar";
+import subjectLoad from "../../../data/list-subjects";
 
 // Loading Overlay Component
 const LoadingOverlay = ({ message }) => {
@@ -15,7 +16,7 @@ const LoadingOverlay = ({ message }) => {
 };
 
 // InputText component
-const InputText = ({ label, value, onChange, placeholder, type = "text", required, name }) => {
+const InputText = ({ label, value, onChange, placeholder, type = "text", required, name, readOnly = false }) => {
   return (
     <div className="mb-4">
       <label className="block text-sm font-medium mb-1 text-gray-700">
@@ -27,8 +28,9 @@ const InputText = ({ label, value, onChange, placeholder, type = "text", require
         value={value}
         onChange={onChange}
         placeholder={placeholder}
-        className="w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-400"
+        className={`w-full p-2 border rounded-lg focus:ring-2 focus:ring-blue-400 ${readOnly ? 'bg-gray-200 text-gray-500 cursor-not-allowed' : ''}`}
         required={required}
+        readOnly={readOnly}
       />
     </div>
   );
@@ -59,7 +61,7 @@ const InputDateOfBirth = ({ value, onChange, required, name }) => {
 };
 
 // Courses array for dropdown
-const availableCourses = ["BSIT", "BSCpE", "BSCS", "BSIS"];
+const availableCourses = ["BSIT", "BSIS"];
 
 const InstructorForm = () => {
   const navigate = useNavigate();
@@ -97,6 +99,23 @@ const InstructorForm = () => {
       const newSubjectLoad = [...formData.subjectLoad];
       newSubjectLoad[index][name] = value;
       newSubjectLoad[index].validationError = '';
+      if (name === 'subjectName' || name === 'course' || name === 'year' || name === 'semester') {
+        const selectedSubject = subjectLoad.find(
+          (subject) =>
+            subject.sb_name === newSubjectLoad[index].subjectName &&
+            subject.sb_course === newSubjectLoad[index].course &&
+            subject.sb_year === parseInt(newSubjectLoad[index].year, 10) &&
+            subject.sb_semester === parseInt(newSubjectLoad[index].semester, 10)
+        );
+        if (selectedSubject) {
+          newSubjectLoad[index].miscode = selectedSubject.sb_miscode;
+          newSubjectLoad[index].units = selectedSubject.sb_units;
+        } else {
+            // Reset dependent fields if a combination is not found
+            newSubjectLoad[index].miscode = '';
+            newSubjectLoad[index].units = '';
+        }
+      }
       setFormData({ ...formData, subjectLoad: newSubjectLoad });
     } else {
       setFormData(prevData => ({
@@ -136,8 +155,8 @@ const InstructorForm = () => {
   const confirmSubject = (index) => {
     const subject = formData.subjectLoad[index];
     const newSubjectLoad = [...formData.subjectLoad];
-    if (!subject.subjectName || !subject.miscode || !subject.units || !subject.semester || !subject.year || !subject.course) {
-      newSubjectLoad[index].validationError = "Please fill in all required fields for this subject before confirming.";
+    if (!subject.subjectName || !subject.course || !subject.year || !subject.semester) {
+      newSubjectLoad[index].validationError = "Please select a course, year, semester, and subject before confirming.";
       setFormData({ ...formData, subjectLoad: newSubjectLoad });
       return;
     }
@@ -150,7 +169,8 @@ const InstructorForm = () => {
     e.preventDefault();
     const allSubjectsConfirmed = formData.subjectLoad.every(sub => sub.isConfirmed);
     if (!allSubjectsConfirmed) {
-      alert("Please confirm all subjects before proceeding.");
+      // Use a custom message box instead of alert
+      console.error("Please confirm all subjects before proceeding.");
       return;
     }
 
@@ -224,17 +244,10 @@ const InstructorForm = () => {
                   </div>
                   {subject.validationError && <p className="text-red-500 text-sm">{subject.validationError}</p>}
 
-                  {/* Subject Name and Course Dropdown */}
+                  {/* Course, Year, Semester and Subject Dropdown */}
                   <div className="grid grid-cols-1 gap-4">
-                    <InputText
-                      label="Subject Name"
-                      name="subjectName"
-                      value={subject.subjectName}
-                      onChange={(e) => handleChange(e, 'subjectLoad', index)}
-                      required
-                    />
                     <div>
-                      <label className="block text-sm font-medium mb-1 text-gray-700">Subject Course<span className="text-red-500">*</span></label>
+                      <label className="block text-sm font-medium mb-1 text-gray-700">Course<span className="text-red-500">*</span></label>
                       <select
                         name="course"
                         value={subject.course || ""}
@@ -248,35 +261,64 @@ const InstructorForm = () => {
                         ))}
                       </select>
                     </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium mb-1 text-gray-700">Year<span className="text-red-500">*</span></label>
+                        <select
+                          name="year"
+                          value={subject.year || ""}
+                          onChange={(e) => handleChange(e, 'subjectLoad', index)}
+                          className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                          required
+                          disabled={!subject.course}
+                        >
+                          <option value="">Select Year</option>
+                          <option value="1">1</option>
+                          <option value="2">2</option>
+                          <option value="3">3</option>
+                          <option value="4">4</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium mb-1 text-gray-700">Semester<span className="text-red-500">*</span></label>
+                        <select
+                          name="semester"
+                          value={subject.semester || ""}
+                          onChange={(e) => handleChange(e, 'subjectLoad', index)}
+                          className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                          required
+                          disabled={!subject.course || !subject.year}
+                        >
+                          <option value="">Select Semester</option>
+                          <option value="1">1</option>
+                          <option value="2">2</option>
+                        </select>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1 text-gray-700">Subject Name<span className="text-red-500">*</span></label>
+                      <select
+                        name="subjectName"
+                        value={subject.subjectName}
+                        onChange={(e) => handleChange(e, 'subjectLoad', index)}
+                        className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                        required
+                        disabled={!subject.course || !subject.year || !subject.semester}
+                      >
+                        <option value="">Select Subject</option>
+                        {subjectLoad
+                          .filter(s => s.sb_course === subject.course && s.sb_year === parseInt(subject.year, 10) && s.sb_semester === parseInt(subject.semester, 10))
+                          .map(s => (
+                            <option key={s.sb_subID} value={s.sb_name}>{s.sb_name}</option>
+                          ))}
+                      </select>
+                    </div>
                   </div>
 
                   {/* MIS Code and Units */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <InputText label="MIS Code" name="miscode" value={subject.miscode} onChange={(e) => handleChange(e, 'subjectLoad', index)} required />
-                    <InputText label="Units" name="units" value={subject.units} onChange={(e) => handleChange(e, 'subjectLoad', index)} required type="number" />
-                  </div>
-
-                  {/* Semester and Year */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Semester<span className="text-red-500">*</span></label>
-                      <select name="semester" value={subject.semester} onChange={(e) => handleChange(e, 'subjectLoad', index)} className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" required>
-                        <option value="">Select Semester</option>
-                        <option value="1st Semester">1st Semester</option>
-                        <option value="2nd Semester">2nd Semester</option>
-                        <option value="Summer">Summer</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Year<span className="text-red-500">*</span></label>
-                      <select name="year" value={subject.year} onChange={(e) => handleChange(e, 'subjectLoad', index)} className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm" required>
-                        <option value="">Select Year</option>
-                        <option value="1">1</option>
-                        <option value="2">2</option>
-                        <option value="3">3</option>
-                        <option value="4">4</option>
-                      </select>
-                    </div>
+                    <InputText label="MIS Code" name="miscode" value={subject.miscode} readOnly />
+                    <InputText label="Units" name="units" value={subject.units} readOnly type="number" />
                   </div>
                 </div>
               ))}
@@ -287,6 +329,9 @@ const InstructorForm = () => {
               Confirm and Save
             </button>
           </form>
+          <div className="mt-8 text-center text-gray-400 text-sm">
+            Note: This form is for instructor registration
+          </div>
         </div>
       </div>
 
