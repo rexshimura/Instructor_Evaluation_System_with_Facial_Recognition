@@ -17,9 +17,9 @@ const lexicon = {
     "resourceful": 2, "empowering": 2, "transformative": 3, "life-changing": 3, "pedagogical": 2,
     "rigorous": 1, "challenging": 1, "respectful": 2, "empathetic": 2, "understanding": 2,
     "considerate": 2, "clear-cut": 1, "organized": 2, "efficient": 1, "engrossing": 2,
-    "captivating": 2, "mind-expanding": 3, "intellectually stimulating": 3,
+    "captivating": 2, "mind-expanding": 3, "intellectually stimulating": 3, "simplifying": 0.5,
     "fostered curiosity": 2, "enlightening": 2, "illuminating": 2, "instructive": 2,
-    "masterfully-taught": 3, "an absolute lifesaver": 3, "a true inspiration": 3,
+    "masterfully-taught": 3, "an absolute lifesaver": 3, "a true inspiration": 3, "highly": 1.5,
     "made learning fun": 2, "commendable": 2, "praiseworthy": 2, "admirable": 2, "useful": 0.5,
     "encouraged growth": 2, "okay": 0.5, "alright": 0.5, "fine": 0.5, "decent": 0.5, "encourages": 1,
   },
@@ -27,11 +27,11 @@ const lexicon = {
   negative: {
     "bad": -1, "hate": -2, "poor": -1, "terrible": -2, "awful": -2, "horrible": -2, "disappointing": -1,
     "confusing": -1, "unclear": -1, "boring": -1, "vague": -1, "slow": -1, "unhelpful": -1,
-    "unresponsive": -1, "hard": -1, "difficult": -2, "complicated": -1, "stupid": -1,
+    "unresponsive": -1, "hard": -1, "difficult": -1, "complicated": -1, "stupid": -1,
     "rushed": -1, "lacks": -2, "fails": -2, "struggled": -2,
     "frustrating": -2, "annoying": -1, "irrelevant": -1, "messy": -1, "unnecessary": -1,
     "conflicted": -1, "unengaging": -1, "abrupt": -1, "tedious": -2, "monotonous": -2,
-    "overwhelming": -2, "unstructured": -1, "ambiguous": -1, "redundant": -1,
+    "overwhelming": -1, "unstructured": -1, "ambiguous": -1, "redundant": -1,
     "inaccessible": -1, "rigid": -1, "biased": -1, "unfair": -2, "inconsistent": -1,
     "unreliable": -1, "unprepared": -1, "irresponsible": -1, "hostile": -2, "intimidating": -2,
     "negative": -1, "hated": -2, "disliked": -1, "annoyed": -1, "disappointed": -1,
@@ -56,12 +56,12 @@ const lexicon = {
 
   diminisher: {
     "a bit": 0.5, "slightly": 0.5, "somewhat": 0.5, "a little": 0.5, "partially": 0.5, "mildly": 0.5,
-    "minimally": 0.5, "hardly": 0.5, "vaguely": 0.5, "barely": 0.5, "sort of": 0.5
+    "minimally": 0.5, "hardly": 0.5, "vaguely": 0.5, "barely": 0.5, "sort of": 0.5, "could": 0.5,
   },
 
   phrases: {
     positive: {
-      "easy to follow": 2, "well prepared": 2, "a big help": 2, "easy to understand": 2,
+      "easy to follow": 2, "well prepared": 2, "great": 2, "a big help": 2, "easy to understand": 2,
       "well-structured": 2, "clear explanation": 2, "organized class": 2,
       "quick to respond": 2, "made it easy": 2, "truly inspiring": 2,
       "stayed on track": 2, "easy to navigate": 2, "worth my time": 2,
@@ -73,7 +73,7 @@ const lexicon = {
       "fair grading": 2, "constructive feedback": 2, "clear instructions": 2,
       "went the extra mile": 3, "made all the difference": 3,
       "office hours were helpful": 2, "the professor was available": 2,
-      "class was a breeze": 1, "the workload was manageable": 1,
+      "class was a breeze": 1, "the workload was manageable": 1, "highly recommended": 2,
       "would take again": 2, "had a great time": 2, "an absolute pleasure": 3,
       "was an absolute pleasure": 3, "gave great feedback": 2, "provided clear instructions": 2
     },
