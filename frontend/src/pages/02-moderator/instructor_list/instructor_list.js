@@ -167,7 +167,7 @@ const InstructorList = () => {
             >
               <div className="flex items-center space-x-4">
                 <img
-                  src={inst.face || "/default-face.png"}
+                  src={inst.face || "/profiles/profile-default.png"}
                   alt={`${inst.in_fname} ${inst.in_lname}`}
                   className="w-16 h-16 rounded-full object-cover border-2 border-gray-300"
                 />
@@ -207,7 +207,7 @@ const InstructorList = () => {
               </button>
               <div className="flex items-center space-x-4 mb-6">
                 <img
-                  src={selectedInstructor.face || "/default-face.png"}
+                  src={selectedInstructor.face || "/profiles/profile-default.png"}
                   alt={`${selectedInstructor.in_fname} ${selectedInstructor.in_lname}`}
                   className="w-20 h-20 rounded-full object-cover border-2 border-gray-300"
                 />
