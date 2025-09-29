@@ -66,6 +66,11 @@ const evaluations = [
   { "ev_evalID": "305020", "st_studID": "20210009", "in_instID": 1060002, "sb_subID": "112", "ev_sem": 1, "ev_year": 1 },
   { "ev_scores": { "q1": 1, "q2": 1, "q3": 1, "q4": 1, "q5": 1, "q6": 1, "q7": 1, "q8": 1, "q9": 1, "q10": 1, "q11": 1, "q12": 1, "q13": 1, "q14": 1, "q15": 1 } },
   { "ev_remarks": "its a meh" },
+
+  // TEST FOR BRIAN Q. JOHNSON
+  { "ev_evalID": "305021", "st_studID": "20210002", "in_instID": 1050009, "sb_subID": "301", "ev_sem": 1, "ev_year": 3 },
+  { "ev_scores": { "q1": 5, "q2": 1, "q3": 1, "q4": 1, "q5": 1, "q6": 1, "q7": 1, "q8": 5, "q9": 1, "q10": 1, "q11": 1, "q12": 1, "q13": 1, "q14": 1, "q15": 1 } },
+  { "ev_remarks": "pretty normal guy." },
 ];
 
 export default evaluations;
