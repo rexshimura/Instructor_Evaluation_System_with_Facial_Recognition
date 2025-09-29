@@ -54,7 +54,10 @@ function App() {
           <Route path="/mod-register-instructor" element={<RegisterForm />} />
           <Route path="/mod-record-face" element={<FaceRecord />} />
           <Route path="/mod-record-face/:instructorID" element={<FaceRecord />} />
+
           <Route path="/mod-instructor-list" element={<InstructorList />} />
+          <Route path="/mod-instructor-list/:instructorID" element={<InstructorList />} />
+          <Route path="/mod-instructor-list/:instructorID/:subjectID" element={<InstructorList />} />
         </Route>
 
          <Route element={<ProtectedRoute requiredRole="admin" />}>
