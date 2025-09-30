@@ -6,6 +6,7 @@ import LoadingOverlay from '../../components/module_feedback/LoadingOverlay';
 import ScoreSelector from '../../components/module_selector/ScoreSelector';
 import EvaluationFormNavBar from '../../components/module_layout/EvaluationFormNavBar';
 import ScrollToTopButton from '../../components/module_feedback/ScrollToTopButton';
+import axios from 'axios';
 
 // Import the categorized questions and remarks question
 import { evaluationQuestions, remarksQuestion } from '../../data/questions';
@@ -55,47 +56,33 @@ export default function EvaluationForm() {
   const handleScoreChange = (questionId, score) => {
     setScores(prev => ({ ...prev, [questionId]: score }));
   };
+  
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const allAnswered = Object.values(scores).every(score => score > 0);
-    if (!allAnswered) {
-      alert("Please answer all evaluation questions before submitting.");
-      return;
-    }
-
-    setIsLoading(true);
+    const userString = sessionStorage.getItem("user");
+    const student = userString ? JSON.parse(userString) : null;
 
     const evaluationData = {
-      instructorID: instructor.in_instructorID,
-      subjectID: subject.sb_subID,
-      evaluationDate: new Date().toISOString(),
+      studentID: student?.st_studid,
+      instructorID: instructor.in_instructorid || instructor.in_instructorID,
+      subjectID: subject.sb_subid || subject.sb_subID,
       scores: scores,
       remarks: remarks,
     };
 
-    console.log("Submitting Evaluation:", evaluationData);
 
     try {
-      const res = await fetch("http://localhost:5000/api/submit", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(evaluationData),
-      });
-
-      const data = await res.json();
-      console.log("Server Response:", data);
-
-      alert("Evaluation submitted successfully!");
+      const res = await axios.post("/eval_submit", evaluationData);
+      alert(res.data.message);
       navigate("/Home");
     } catch (err) {
-      console.error("Error submitting evaluation:", err);
-      alert("There was an error submitting the evaluation.");
-    } finally {
-      setIsLoading(false);
+      console.error(err);
+      alert("Failed to submit evaluation");
     }
   };
+
 
   return (
     <div className="bg-gray-100 min-h-screen flex flex-col">
@@ -198,9 +185,8 @@ export default function EvaluationForm() {
             <button
               type="submit"
               disabled={isLoading}
-              className={`font-bold py-2 px-6 rounded-lg transition-colors duration-200 ${
-                isLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600 text-white'
-              }`}
+              className={`font-bold py-2 px-6 rounded-lg transition-colors duration-200 ${isLoading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-500 hover:bg-blue-600 text-white'
+                }`}
             >
               {isLoading ? 'Submitting...' : 'Submit Evaluation'}
             </button>

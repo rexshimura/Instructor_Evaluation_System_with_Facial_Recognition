@@ -16,6 +16,7 @@ const getScoreWord = (score) => {
   return "Poor";
 };
 
+
 const SCORE_COLORS = {
   Excellent: "bg-teal-500",
   "Very Good": "bg-blue-500",

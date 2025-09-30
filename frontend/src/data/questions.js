@@ -1,6 +1,6 @@
 const evaluationQuestions = [
   {
-    // C1: Course Organization and Content
+    // ev_C1: Course Organization and Content
     // Questions in this category evaluate how well the course was designed.
     category: "Course Organization and Content",
     questions: [
@@ -10,7 +10,7 @@ const evaluationQuestions = [
     ],
   },
   {
-    // C2: Instructor's Knowledge and Presentation
+    // ev_C2: Instructor's Knowledge and Presentation
     // This category assesses the instructor's knowledge and teaching style.
     category: "Instructor's Knowledge and Presentation",
     questions: [
@@ -20,7 +20,7 @@ const evaluationQuestions = [
     ],
   },
   {
-    // C3: Communication and Interaction
+    // ev_C3: Communication and Interaction
     // Questions here measure how the instructor interacted with students and facilitated learning.
     category: "Communication and Interaction",
     questions: [
@@ -30,7 +30,7 @@ const evaluationQuestions = [
     ],
   },
   {
-    // C4: Assessment and Feedback
+    // ev_C4: Assessment and Feedback
     // This category evaluates how students were assessed throughout the course.
     category: "Assessment and Feedback",
     questions: [
@@ -40,7 +40,7 @@ const evaluationQuestions = [
     ],
   },
   {
-    // C5: Overall Effectiveness
+    // ev_C5: Overall Effectiveness
     // These are broad, summary questions to gauge overall satisfaction and effectiveness.
     category: "Overall Effectiveness",
     questions: [

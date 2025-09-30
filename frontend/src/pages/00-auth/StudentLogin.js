@@ -2,10 +2,10 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import InputText from "../../components/module_input/InputText";
 import InputDateOfBirth from "../../components/module_input/InputDateOfBirth";
-// import students from "../../data/students";
-import studentData from "../../data/list-students";
+// import studentData from "../../data/list-students";
 import LoadingOverlay from "../../components/module_feedback/LoadingOverlay";
 import { FaArrowLeft, FaUserShield } from "react-icons/fa";
+import axios from "axios"
 
 export default function StudentLogin() {
   const [studentId, setStudentId] = useState("");
@@ -14,25 +14,28 @@ export default function StudentLogin() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
+    setMessage("");
 
-    setTimeout(() => {
-      const foundStudent = studentData.find(
-        (s) => s.st_studID === studentId && s.st_dob === dob
-      );
+    try {
+      const res = await axios.post("/student_login", {
+        studentId,
+        dob,
+      });
 
-      if (foundStudent) {
-        sessionStorage.setItem("user", JSON.stringify(foundStudent));
-        sessionStorage.setItem("role", "student");
-        navigate("/home");
-      } else {
-        setMessage("❌ Invalid Student ID or Date of Birth.");
-        setIsLoading(false);
-      }
-    }, 1500);
+      // ✅ Save logged-in student in session
+      sessionStorage.setItem("user", JSON.stringify(res.data.student));
+      sessionStorage.setItem("role", "student");
+
+      navigate("/home");
+    } catch (err) {
+      setMessage("❌ Invalid Student ID or Date of Birth.");
+      setIsLoading(false);
+    }
   };
+
 
   return (
     <>
