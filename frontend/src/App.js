@@ -10,6 +10,8 @@ import AdminLogin from "./pages/00-auth/AdminLogin";
 
 // ADMIN ROUTES
 import AdminPanel from "./pages/01-administration/admin_panel";
+import AdminInstructorList from "./pages/01-administration/instructor_list/admin_instructor_list";
+import AdminModeratorList from "./pages/01-administration/moderator_list/admin_moderator_list";
 
 // MODERATOR ROUTES
 import ModeratorPanel from "./pages/02-moderator/moderator_panel";
@@ -62,6 +64,13 @@ function App() {
 
          <Route element={<ProtectedRoute requiredRole="admin" />}>
         <Route path="/adm-panel" element={<AdminPanel />} />
+        <Route path="/adm-instructor-list" element={<AdminInstructorList />} />
+        <Route path="/adm-instructor-list/:instructorID" element={<AdminInstructorList />} />
+        <Route path="/adm-instructor-list/:instructorID/:subjectID" element={<AdminInstructorList />} />
+
+        <Route path="/adm-moderator-list" element={<AdminModeratorList />} />
+        <Route path="/adm-moderator-list/:mod_ID" element={<AdminModeratorList />} />
+        <Route path="/adm-moderator-list/:mod_ID/edit" element={<AdminModeratorList />} />
         </Route>
 
       <Route path="/oops" element={<LoginBlock />} />
