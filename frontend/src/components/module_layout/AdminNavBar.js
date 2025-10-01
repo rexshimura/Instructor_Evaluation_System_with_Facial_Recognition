@@ -1,6 +1,13 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { FaHome, FaUsers, FaUserTie, FaSignOutAlt } from "react-icons/fa";
+import {
+  FaHome,
+  FaUsers,
+  FaUserTie,
+  FaSignOutAlt,
+  FaBook,
+  FaChartBar,
+} from "react-icons/fa";
 import LoadingOverlay from "../module_feedback/LoadingOverlay";
 
 export default function AdminNavBar() {
@@ -18,15 +25,17 @@ export default function AdminNavBar() {
   };
 
   const navItems = [
-    { label: "Home", path: "/admin-panel", icon: <FaHome /> },
-    { label: "Moderator List", path: "/admin-moderator-list", icon: <FaUserTie /> },
-    { label: "Instructor List", path: "/admin-instructor-list", icon: <FaUsers /> },
+    { label: "Home", path: "/adm-panel", icon: <FaHome /> },
+    { label: "Moderators", path: "/adm-moderator-list", icon: <FaUserTie /> },
+    { label: "Instructors", path: "/adm-instructor-list", icon: <FaUsers /> },
+    { label: "Curriculum", path: "/adm-curriculum", icon: <FaBook /> },
+    { label: "Statistics", path: "/adm-statistics", icon: <FaChartBar /> },
   ];
 
   return (
     <>
       {/* Navbar */}
-      <nav className="bg-purple-800 text-white p-4 flex justify-between items-center relative z-50">
+      <nav className="bg-purple-900 text-white p-4 flex justify-between items-center relative z-50">
         <h1 className="font-bold text-lg">Admin Panel</h1>
 
         {/* Mobile toggle */}
@@ -52,7 +61,10 @@ export default function AdminNavBar() {
         {/* Desktop menu */}
         <ul className="hidden md:flex gap-6 items-center">
           {navItems.map((item, idx) => (
-            <li key={idx} className="hover:underline cursor-pointer flex items-center gap-2">
+            <li
+              key={idx}
+              className="hover:underline cursor-pointer flex items-center gap-2"
+            >
               {item.icon}
               <Link to={item.path}>{item.label}</Link>
             </li>
