@@ -11,11 +11,11 @@ import { evaluationQuestions } from "../../../data/questions";
 // --- Utility Import ---
 import analyzeRemarks from "../../../utils/remarkAnalyzer";
 
-const semesterMap = {
-  1: "1st Semester",
-  2: "2nd Semester",
-  3: "Summer",
-};
+// const semesterMap = {
+//   1: "1st Semester",
+//   2: "2nd Semester",
+//   3: "Summer",
+// };
 
 // ===================================================================
 // --- HELPER COMPONENTS & FUNCTIONS (from InstructorProfile.js) ---
