@@ -1,25 +1,85 @@
 // src/InstructorFaceRec.js
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { FaUserCircle } from "react-icons/fa";
 import VerifyNavBar from "../../components/module_layout/VerifyNavBar";
-import rawInstructorData from "../../data/list-instructors";
-
-// Normalize instructor data in case it's wrapped
-const instructors = Array.isArray(rawInstructorData)
-  ? rawInstructorData
-  : rawInstructorData.instructors || [];
 
 export default function InstructorFaceRec() {
   const [selectedInstructorID, setSelectedInstructorID] = useState("");
+  const [instructors, setInstructors] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const navigate = useNavigate();
+
+  // Fetch instructors from backend
+  useEffect(() => {
+    const fetchInstructors = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch("/instructor_list");
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.error) {
+          throw new Error(data.error);
+        }
+        
+        setInstructors(data);
+        setError(null);
+      } catch (err) {
+        console.error("Error fetching instructors:", err);
+        setError("Failed to load instructors. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInstructors();
+  }, []);
 
   const handleViewProfile = () => {
     if (selectedInstructorID) {
       navigate(`/instructor-profile/${selectedInstructorID}`);
     }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-6">
+        <VerifyNavBar />
+        <div className="relative w-full max-w-lg bg-white rounded-lg shadow-xl p-8 mt-16 flex flex-col items-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
+          <p className="text-gray-600">Loading instructors...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-6">
+        <VerifyNavBar />
+        <div className="relative w-full max-w-lg bg-white rounded-lg shadow-xl p-8 mt-16">
+          <div className="flex flex-col items-center text-center">
+            <FaUserCircle className="text-5xl text-red-500 mb-2" />
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Error</h2>
+            <p className="text-red-500 mb-4">{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col items-center justify-center p-6">
@@ -45,10 +105,10 @@ export default function InstructorFaceRec() {
             className="w-full max-w-xs p-3 border border-gray-300 rounded-lg text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
           >
             <option value="" disabled>
-              Select an instructor
+              {instructors.length === 0 ? "No instructors available" : "Select an instructor"}
             </option>
             {instructors.map((inst) => (
-              <option key={inst.in_instructorID} value={inst.in_instructorID}>
+              <option key={inst.in_instructorid} value={inst.in_instructorid}>
                 {inst.in_fname} {inst.in_lname} - {inst.in_dept}
               </option>
             ))}
@@ -57,15 +117,20 @@ export default function InstructorFaceRec() {
           {/* Action Button */}
           <button
             onClick={handleViewProfile}
-            disabled={!selectedInstructorID}
+            disabled={!selectedInstructorID || instructors.length === 0}
             className={`w-full max-w-xs py-3 rounded-full font-semibold transition ${
-              selectedInstructorID
+              selectedInstructorID && instructors.length > 0
                 ? "bg-blue-600 text-white hover:bg-blue-700"
                 : "bg-gray-400 text-gray-600 cursor-not-allowed"
             }`}
           >
-            View Profile
+            {instructors.length === 0 ? "No Instructors Available" : "View Profile"}
           </button>
+        </div>
+
+        {/* Instructor Count */}
+        <div className="mt-4 text-center text-sm text-gray-500">
+          {instructors.length} instructor(s) available
         </div>
       </div>
     </div>

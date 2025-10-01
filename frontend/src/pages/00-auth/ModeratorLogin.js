@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import moderators from "../../data/moderators";
+import axios from "axios";
 import LoadingOverlay from "../../components/module_feedback/LoadingOverlay";
 import InputText from "../../components/module_input/InputText";
 import InputPassword from "../../components/module_input/InputPassword";
@@ -13,24 +13,22 @@ export default function ModeratorLogin() {
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setIsLoading(true);
 
-    setTimeout(() => {
-      const foundModerator = moderators.find(
-        (mod) => mod.mod_username === username && mod.mod_password === password
-      );
+    try {
+      const res = await axios.post("/moderator_login", { username, password });
 
-      if (foundModerator) {
-        sessionStorage.setItem("user", JSON.stringify(foundModerator));
-        sessionStorage.setItem("role", "moderator");
-        navigate("/mod-panel");
-      } else {
-        setMessage("❌ Invalid username or password.");
-        setIsLoading(false);
-      }
-    }, 1500);
+      sessionStorage.setItem("user", JSON.stringify(res.data.moderator));
+      sessionStorage.setItem("role", "moderator");
+      navigate("/mod-panel");
+    } catch (err) {
+      setMessage("❌ Invalid username or password.");
+      console.error(err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -51,7 +49,7 @@ export default function ModeratorLogin() {
         {/* Right Column: Form */}
         <div className="bg-white flex flex-col justify-center items-center p-8 relative">
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate("/")}
             className="absolute top-8 right-8 flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition"
           >
             <FaArrowLeft />
@@ -102,7 +100,7 @@ export default function ModeratorLogin() {
                     Login as Student
                   </span>
                 </div>
-                 {/* Admin Login Icon */}
+                {/* Admin Login Icon */}
                 <div className="relative group">
                   <Link
                     to="/admn-login"
@@ -127,4 +125,3 @@ export default function ModeratorLogin() {
     </>
   );
 }
-

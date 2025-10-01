@@ -28,6 +28,33 @@ const pool = new Pool({
 
 // ------------------- Routes -------------------
 
+// 🔑 Moderator login
+app.post("/moderator_login", async (req, res) => {
+  try {
+    const { username, password } = req.body;
+
+    const result = await pool.query(
+      "SELECT * FROM moderators WHERE mod_username = $1 AND mod_password = $2",
+      [username, password]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: "Invalid username or password" });
+    }
+
+    const moderator = result.rows[0];
+
+    res.json({
+      message: "Login successful",
+      moderator,
+    });
+  } catch (err) {
+    console.error("Moderator login error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+});
+
+
 // 🔑 Student login
 app.post("/student_login", async (req, res) => {
   try {
@@ -68,6 +95,18 @@ app.get("/instructor_list", async (req, res) => {
     res.status(500).json({ error: "Failed to fetch instructors" });
   }
 });
+
+// 👩‍🎓 Get all students
+app.get("/student_list", async (req, res) => {
+  try {
+    const result = await pool.query("SELECT * FROM students ORDER BY st_studid ASC");
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error fetching students:", err);
+    res.status(500).json({ error: "Failed to fetch students" });
+  }
+});
+
 
 // 📚 Subjects
 app.get("/subject_list", async (req, res) => {
@@ -166,27 +205,7 @@ app.post("/eval_submit", async (req, res) => {
   }
 });
 
-// 📊 Get evaluations by student
-app.get("/evaluations/:studentId", async (req, res) => {
-  let { studentId } = req.params;
 
-  if (!studentId || isNaN(studentId)) {
-    return res.status(400).json({ error: "Invalid student ID" });
-  }
-
-  try {
-    const result = await pool.query(
-      `SELECT in_instructorid, ev_subject, ev_semester 
-       FROM evaluations 
-       WHERE st_studid = $1`,
-      [parseInt(studentId, 10)]
-    );
-    res.json(result.rows);
-  } catch (err) {
-    console.error("Error fetching evaluations:", err);
-    res.status(500).json({ error: "Failed to fetch evaluations" });
-  }
-});
 
 
 // ------------------- Server -------------------

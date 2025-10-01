@@ -1,10 +1,6 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import ModeratorNavBar from "../../../components/module_layout/ModeratorNavBar";
-import instructors from "../../../data/list-instructors";
-import subjectLoad from "../../../data/list-subjects";
-import classList from "../../../data/list-class";
-import studentData from "../../../data/list-students";
 
 const semesterMap = {
   1: "1st Semester",
@@ -19,25 +15,86 @@ const InstructorList = () => {
   const [filterCourse, setFilterCourse] = useState("All");
   const [filterYear, setFilterYear] = useState("All");
   const [filterSemester, setFilterSemester] = useState("All");
+  const [instructorsWithSubjects, setInstructorsWithSubjects] = useState([]);
+  const [sections, setSections] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const { instructorID, subjectID } = useParams();
   const navigate = useNavigate();
 
-  // `useMemo` prevents this expensive calculation from running on every render.
-  // This makes the `instructorsWithSubjects` variable stable, allowing the `useEffect` hook to work correctly.
-  const instructorsWithSubjects = useMemo(() => {
-    return instructors.map((inst) => {
-      const subjects = subjectLoad.filter((sub) =>
-        inst.in_subhandled.includes(sub.sb_subID)
-      );
-      return { ...inst, subjects };
-    });
-  }, []); // The empty array [] ensures this runs only once.
+  // Helper function to ensure subjects is always an array
+  const ensureSubjectsArray = (subjects) => {
+    if (!subjects) return [];
+    if (Array.isArray(subjects)) return subjects;
+    if (typeof subjects === 'string') {
+      try {
+        return JSON.parse(subjects);
+      } catch (e) {
+        console.warn('Failed to parse subjects string:', subjects);
+        return [];
+      }
+    }
+    return [];
+  };
+
+  // Helper function to check if array contains a value (handles string/number conversion)
+  const arrayContains = (arr, value) => {
+    if (!arr || !Array.isArray(arr)) return false;
+    return arr.some(item => String(item) === String(value));
+  };
+
+  // Fetch data from backend
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        
+        const [instructorsRes, subjectsRes, sectionsRes, studentsRes] = await Promise.all([
+          fetch("http://localhost:5000/instructor_list").then(res => res.json()),
+          fetch("http://localhost:5000/subject_list").then(res => res.json()),
+          fetch("http://localhost:5000/section_list").then(res => res.json()),
+          fetch("http://localhost:5000/student_list").then(res => res.json())
+        ]);
+
+        if (instructorsRes.error) throw new Error(instructorsRes.error);
+        if (subjectsRes.error) throw new Error(subjectsRes.error);
+        if (sectionsRes.error) throw new Error(sectionsRes.error);
+        if (studentsRes.error) throw new Error(studentsRes.error);
+
+        // Process instructors with their subjects
+        const processedInstructors = instructorsRes.map(instructor => {
+          const instructorSubjects = subjectsRes.filter(subject => 
+            instructor.in_subhandled && 
+            arrayContains(instructor.in_subhandled, subject.sb_subid)
+          );
+
+          return {
+            ...instructor,
+            subjects: instructorSubjects
+          };
+        });
+
+        setInstructorsWithSubjects(processedInstructors);
+        setSections(sectionsRes);
+        setStudents(studentsRes);
+        setError(null);
+      } catch (err) {
+        console.error("Error fetching data:", err);
+        setError("Failed to load data. Please try again later.");
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, []);
 
   useEffect(() => {
     if (instructorID && instructorsWithSubjects.length > 0) {
       const inst = instructorsWithSubjects.find(
-        (i) => String(i.in_instructorID) === instructorID
+        (i) => String(i.in_instructorid) === instructorID
       );
       if (inst) {
         setSelectedInstructor(inst);
@@ -52,21 +109,23 @@ const InstructorList = () => {
   }, [instructorID, subjectID, instructorsWithSubjects, navigate]);
 
   const filteredInstructors = instructorsWithSubjects.filter((inst) => {
+    const subjects = ensureSubjectsArray(inst.subjects);
+    
     if (filterCourse !== "All") {
-      const teachesCourse = inst.subjects.some(
-        (sub) => sub.sb_course === filterCourse
+      const teachesCourse = subjects.some(
+        (sub) => sub && sub.sb_course === filterCourse
       );
       if (!teachesCourse) return false;
     }
     if (filterYear !== "All") {
-      const teachesYear = inst.subjects.some(
-        (sub) => String(sub.sb_year) === filterYear
+      const teachesYear = subjects.some(
+        (sub) => sub && String(sub.sb_year) === filterYear
       );
       if (!teachesYear) return false;
     }
     if (filterSemester !== "All") {
-      const teachesSem = inst.subjects.some(
-        (sub) => String(sub.sb_semester) === filterSemester
+      const teachesSem = subjects.some(
+        (sub) => sub && String(sub.sb_semester) === filterSemester
       );
       if (!teachesSem) return false;
     }
@@ -75,16 +134,17 @@ const InstructorList = () => {
       inst.in_fname.toLowerCase().includes(query) ||
       inst.in_lname.toLowerCase().includes(query) ||
       inst.in_dept.toLowerCase().includes(query) ||
-      inst.subjects.some(
+      subjects.some(
         (sub) =>
-          sub.sb_name.toLowerCase().includes(query) ||
-          sub.sb_miscode.toLowerCase().includes(query)
+          sub &&
+          (sub.sb_name.toLowerCase().includes(query) ||
+          sub.sb_miscode.toLowerCase().includes(query))
       )
     );
   });
 
   const handleOpenModal = (inst) => {
-    navigate(`/mod-instructor-list/${inst.in_instructorID}`);
+    navigate(`/mod-instructor-list/${inst.in_instructorid}`);
   };
 
   const handleCloseModal = () => {
@@ -101,9 +161,75 @@ const InstructorList = () => {
   };
 
   const subjectsToShow = selectedInstructor && expandedSubjectId
-    ? selectedInstructor.subjects.filter(s => s.sb_subID === expandedSubjectId)
-    : selectedInstructor?.subjects || [];
+    ? ensureSubjectsArray(selectedInstructor.subjects).filter(s => s && String(s.sb_subid) === expandedSubjectId)
+    : ensureSubjectsArray(selectedInstructor?.subjects) || [];
 
+  // Get students by section
+  const getStudentsBySection = (course, year, section) => {
+    return students.filter(
+      (stud) =>
+        stud.st_course === course &&
+        stud.st_year === year &&
+        stud.st_section === section
+    ).sort((a, b) => a.st_lname.localeCompare(b.st_lname));
+  };
+
+  // Debug function to check section data
+  const debugSections = (instructorId, subject) => {
+    console.log("=== DEBUG SECTIONS ===");
+    console.log("Instructor ID:", instructorId);
+    console.log("Subject:", subject);
+    console.log("All sections:", sections);
+    
+    const relevantSections = sections.filter(section => {
+      const hasInstructor = arrayContains(section.section_ins_list, instructorId);
+      const sameYear = section.section_year === subject.sb_year;
+      console.log(`Section ${section.section_id}:`, {
+        section_ins_list: section.section_ins_list,
+        hasInstructor,
+        section_year: section.section_year,
+        subject_year: subject.sb_year,
+        sameYear
+      });
+      return hasInstructor && sameYear;
+    });
+    
+    console.log("Relevant sections:", relevantSections);
+    return relevantSections;
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex flex-col">
+        <ModeratorNavBar />
+        <main className="flex-1 p-6 max-w-7xl mx-auto w-full flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+            <p className="mt-4 text-gray-600">Loading instructors...</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-100 flex flex-col">
+        <ModeratorNavBar />
+        <main className="flex-1 p-6 max-w-7xl mx-auto w-full flex items-center justify-center">
+          <div className="text-center text-red-600">
+            <p className="text-lg font-semibold">{error}</p>
+            <button 
+              onClick={() => window.location.reload()} 
+              className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+            >
+              Retry
+            </button>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
@@ -113,7 +239,7 @@ const InstructorList = () => {
           Instructor List
         </h1>
 
-        {/* Search and Filters Section... */}
+        {/* Search and Filters Section */}
         <div className="flex flex-col md:flex-row items-center justify-between mb-6 gap-3">
           <input
             type="text"
@@ -156,44 +282,56 @@ const InstructorList = () => {
           </div>
         </div>
 
-
-        {/* Instructors Grid Section... */}
+        {/* Instructors Grid Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredInstructors.map((inst) => (
-            <div
-              key={inst.in_instructorID}
-              className="bg-white shadow-md rounded-lg p-4 cursor-pointer hover:shadow-xl transition"
-              onClick={() => handleOpenModal(inst)}
-            >
-              <div className="flex items-center space-x-4">
-                <img
-                  src={inst.face || "/profiles/profile-default.png"}
-                  alt={`${inst.in_fname} ${inst.in_lname}`}
-                  className="w-16 h-16 rounded-full object-cover border-2 border-gray-300"
-                />
-                <div>
-                  <p className="font-semibold text-lg">
-                    {inst.in_fname} {inst.in_mname ? inst.in_mname[0] + "." : ""}{" "}
-                    {inst.in_lname} {inst.in_suffix}
-                  </p>
-                  <p className="text-gray-500 text-sm">{inst.in_dept}</p>
+          {filteredInstructors.map((inst) => {
+            const subjects = ensureSubjectsArray(inst.subjects);
+            
+            return (
+              <div
+                key={inst.in_instructorid}
+                className="bg-white shadow-md rounded-lg p-4 cursor-pointer hover:shadow-xl transition"
+                onClick={() => handleOpenModal(inst)}
+              >
+                <div className="flex items-center space-x-4">
+                  <img
+                    src={inst.face || "/profiles/profile-default.png"}
+                    alt={`${inst.in_fname} ${inst.in_lname}`}
+                    className="w-16 h-16 rounded-full object-cover border-2 border-gray-300"
+                  />
+                  <div>
+                    <p className="font-semibold text-lg">
+                      {inst.in_fname} {inst.in_mname ? inst.in_mname[0] + "." : ""}{" "}
+                      {inst.in_lname} {inst.in_suffix}
+                    </p>
+                    <p className="text-gray-500 text-sm">{inst.in_dept}</p>
+                  </div>
+                </div>
+                <div className="mt-4 space-y-1">
+                  {subjects.slice(0, 3).map((sub, index) => (
+                    <div key={index} className="text-sm text-gray-600">
+                      {sub.sb_name} ({sub.sb_miscode}) - {sub.sb_course}
+                    </div>
+                  ))}
+                  {subjects.length > 3 && (
+                    <p className="text-xs text-gray-400">
+                      +{subjects.length - 3} more subjects
+                    </p>
+                  )}
+                  {subjects.length === 0 && (
+                    <p className="text-xs text-gray-400">No subjects assigned</p>
+                  )}
                 </div>
               </div>
-              <div className="mt-4 space-y-1">
-                {inst.subjects.slice(0, 3).map((sub, index) => (
-                  <div key={index} className="text-sm text-gray-600">
-                    {sub.sb_name} ({sub.sb_miscode}) - {sub.sb_course}
-                  </div>
-                ))}
-                {inst.subjects.length > 3 && (
-                  <p className="text-xs text-gray-400">
-                    +{inst.subjects.length - 3} more subjects
-                  </p>
-                )}
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
+
+        {filteredInstructors.length === 0 && !loading && (
+          <div className="text-center py-8 text-gray-500">
+            No instructors found matching your criteria.
+          </div>
+        )}
 
         {/* Modal / Popup */}
         {selectedInstructor && (
@@ -238,31 +376,38 @@ const InstructorList = () => {
 
               <div className="space-y-2">
                 {subjectsToShow.map((sub) => {
-                  const assignedClasses = classList.filter(
-                    (c) =>
-                      c.il_instructor_list.includes(
-                        selectedInstructor.in_instructorID
-                      ) && c.cl_year === sub.sb_year
-                  );
+                  if (!sub) return null;
+                  
+                  // Find sections where this instructor teaches this subject
+                  const assignedSections = sections.filter(section => {
+                    const hasInstructor = arrayContains(section.section_ins_list, selectedInstructor.in_instructorid);
+                    const sameYear = section.section_year === sub.sb_year;
+                    
+                    // For debugging - uncomment the next line to see section matching in console
+                    // console.log(`Section ${section.section_id}: instructor ${selectedInstructor.in_instructorid} in ${section.section_ins_list}? ${hasInstructor}, year match? ${sameYear}`);
+                    
+                    return hasInstructor && sameYear;
+                  });
 
-                  const sectionsWithStudents = assignedClasses.map((cl) => {
-                    const students = studentData
-                      .filter(
-                        (stud) =>
-                          stud.st_course === sub.sb_course &&
-                          stud.st_year === cl.cl_year &&
-                          stud.st_section === cl.st_section
-                      )
-                      .sort((a, b) => a.st_lname.localeCompare(b.st_lname));
+                  const sectionsWithStudents = assignedSections.map((section) => {
+                    const studentsInSection = getStudentsBySection(
+                      sub.sb_course,
+                      section.section_year,
+                      section.section_name
+                    );
 
-                    return { ...cl, students };
+                    return { ...section, students: studentsInSection };
                   });
 
                   return (
-                    <div key={sub.sb_subID} className="bg-gray-50 rounded-md border">
+                    <div key={sub.sb_subid} className="bg-gray-50 rounded-md border">
                       <button
                         className="w-full text-left p-3 hover:bg-gray-100 transition flex justify-between items-center"
-                        onClick={() => handleSubjectToggle(sub.sb_subID)}
+                        onClick={() => {
+                          // Debug: check why sections might not be showing
+                          debugSections(selectedInstructor.in_instructorid, sub);
+                          handleSubjectToggle(String(sub.sb_subid));
+                        }}
                         disabled={!!expandedSubjectId}
                       >
                         <div>
@@ -275,39 +420,57 @@ const InstructorList = () => {
                           <p className="text-sm text-gray-600">
                             {semesterMap[sub.sb_semester]} - Year {sub.sb_year}
                           </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Sections: {assignedSections.length}
+                          </p>
                         </div>
                         {!expandedSubjectId && (
                           <span className="text-gray-400 text-2xl font-mono pr-2">&rsaquo;</span>
                         )}
                       </button>
 
-                      {expandedSubjectId === sub.sb_subID && (
+                      {expandedSubjectId === String(sub.sb_subid) && (
                         <div className="p-3 border-t border-gray-200 bg-white">
                           {sectionsWithStudents.length > 0 ? (
-                            sectionsWithStudents.map((section) => (
-                              <div key={section.cl_classID} className="mb-3">
-                                <h4 className="font-semibold text-gray-800">
-                                  Section: {sub.sb_course} {section.cl_year}-{section.st_section}
-                                </h4>
-                                {section.students.length > 0 ? (
-                                  <ul className="list-disc pl-5 mt-1">
-                                    {section.students.map((stud) => (
-                                      <li key={stud.st_studID} className="text-xs text-gray-700">
-                                        {stud.st_lname}, {stud.st_fname}
-                                      </li>
-                                    ))}
-                                  </ul>
-                                ) : (
-                                  <p className="text-sm text-gray-500 pl-5">
-                                    No students listed for this section.
-                                  </p>
-                                )}
-                              </div>
-                            ))
+                            <>
+                              <p className="text-sm text-gray-600 mb-3">
+                                Showing sections for {sub.sb_course} Year {sub.sb_year}:
+                              </p>
+                              {sectionsWithStudents.map((section) => (
+                                <div key={section.section_id} className="mb-4 p-3 border rounded-lg bg-gray-50">
+                                  <h4 className="font-semibold text-gray-800 mb-2">
+                                    Section: {sub.sb_course} {section.section_year}-{section.section_name}
+                                  </h4>
+                                  {section.students.length > 0 ? (
+                                    <div>
+                                      <p className="text-sm text-gray-600 mb-2">
+                                        Students ({section.students.length}):
+                                      </p>
+                                      <ul className="list-disc pl-5 space-y-1">
+                                        {section.students.map((stud) => (
+                                          <li key={stud.st_studid} className="text-sm text-gray-700">
+                                            {stud.st_lname}, {stud.st_fname} ({stud.st_studid})
+                                          </li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm text-gray-500">
+                                      No students enrolled in this section.
+                                    </p>
+                                  )}
+                                </div>
+                              ))}
+                            </>
                           ) : (
-                            <p className="text-sm text-gray-500">
-                              No sections assigned for this subject.
-                            </p>
+                            <div className="text-center py-4">
+                              <p className="text-sm text-gray-500 mb-2">
+                                No sections assigned for this subject.
+                              </p>
+                              <p className="text-xs text-gray-400">
+                                Check that the instructor is in the section_ins_list and the section year matches the subject year.
+                              </p>
+                            </div>
                           )}
                         </div>
                       )}

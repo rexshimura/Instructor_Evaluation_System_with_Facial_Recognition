@@ -12,7 +12,7 @@ const semesterMap = {
 export default function StudentInstructorListPage() {
   const [selectedInstructor, setSelectedInstructor] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all"); // ✅ filter state
+  const [statusFilter, setStatusFilter] = useState("all");
   const [instructors, setInstructors] = useState([]);
   const [subjects, setSubjects] = useState([]);
   const [sections, setSections] = useState([]);
@@ -30,7 +30,7 @@ export default function StudentInstructorListPage() {
             axios.get("/instructor_list"),
             axios.get("/subject_list"),
             axios.get("/section_list"),
-            axios.get(`/evaluations/${student.st_studid}`), // ✅ fetch student evaluations
+            axios.get(`/evaluations/${student.st_studid}`),
           ]);
 
           setInstructors(instrRes.data);
@@ -56,7 +56,6 @@ export default function StudentInstructorListPage() {
     );
   }
 
-  // ✅ Check if student already evaluated this instructor + subject + semester
   const isSubjectEvaluated = (instructorId, subjectId) => {
     return evaluations.some(
       (ev) =>
@@ -66,18 +65,19 @@ export default function StudentInstructorListPage() {
     );
   };
 
-
-  // --- Data filtering logic ---
+  // --- Data filtering ---
   const studentSection = sections.find(
     (sec) =>
-      sec.section_year === student.st_year && sec.section_name === student.st_section
+      sec.section_year === student.st_year &&
+      sec.section_name === student.st_section
   );
-  const instructorIDsForStudent = studentSection ? studentSection.section_ins_list : [];
+  const instructorIDsForStudent = studentSection
+    ? studentSection.section_ins_list
+    : [];
   const instructorsForClass = instructors.filter((inst) =>
     instructorIDsForStudent.includes(inst.in_instructorid)
   );
 
-  // 🔹 Align instructors with their subjects + evaluation status
   const alignedInstructors = instructorsForClass
     .map((inst) => {
       const subjs = subjects.filter(
@@ -93,7 +93,6 @@ export default function StudentInstructorListPage() {
         isEvaluated: isSubjectEvaluated(inst.in_instructorid, sub.sb_subid),
       }));
 
-      // ✅ instructor-level pending/completed flag
       const isAnySubjectPending = mappedSubjects.some((sub) => !sub.isEvaluated);
 
       return {
@@ -104,7 +103,6 @@ export default function StudentInstructorListPage() {
     })
     .filter((inst) => inst.subjects.length > 0);
 
-  // 🔹 Apply both search and status filter
   const filteredInstructors = alignedInstructors.filter((inst) => {
     const searchLower = searchTerm.toLowerCase();
     const fullName = `${inst.in_fname} ${inst.in_lname}`.toLowerCase();
@@ -146,8 +144,8 @@ export default function StudentInstructorListPage() {
               key={status}
               onClick={() => setStatusFilter(status)}
               className={`px-4 py-2 rounded-lg font-semibold ${statusFilter === status
-                ? "bg-blue-500 text-white"
-                : "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                  ? "bg-blue-500 text-white"
+                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
                 }`}
             >
               {status.charAt(0).toUpperCase() + status.slice(1)}
@@ -182,7 +180,8 @@ export default function StudentInstructorListPage() {
                   />
                   <div>
                     <p className="font-semibold text-lg">
-                      {inst.in_fname} {inst.in_mname ? inst.in_mname[0] + "." : ""}{" "}
+                      {inst.in_fname}{" "}
+                      {inst.in_mname ? inst.in_mname[0] + "." : ""}{" "}
                       {inst.in_lname} {inst.in_suffix}
                     </p>
                     <p className="text-gray-500 text-sm">{inst.in_dept}</p>
@@ -205,9 +204,10 @@ export default function StudentInstructorListPage() {
                       ) : (
                         <button
                           className="bg-blue-500 text-white font-bold py-1 px-2 rounded hover:bg-blue-600 transition"
-                          onClick={() =>
-                            handleEvaluateClick(inst.in_instructorid, sub.sb_subid)
-                          }
+                          onClick={(e) => {
+                            e.stopPropagation(); // ✅ prevent modal open
+                            handleEvaluateClick(inst.in_instructorid, sub.sb_subid);
+                          }}
                         >
                           Evaluate
                         </button>
@@ -224,6 +224,88 @@ export default function StudentInstructorListPage() {
           </p>
         )}
       </main>
+
+      {/* --- Modal logic integrated --- */}
+      {selectedInstructor && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6 relative">
+            <button
+              className="absolute top-2 right-2 text-gray-600 hover:text-gray-800 font-bold text-xl"
+              onClick={() => setSelectedInstructor(null)}
+            >
+              &times;
+            </button>
+            <div className="flex items-center space-x-4 mb-6">
+              <img
+                src={
+                  selectedInstructor.face || "/profiles/profile-default.png"
+                }
+                alt={`${selectedInstructor.in_fname} ${selectedInstructor.in_lname}`}
+                className="w-20 h-20 rounded-full object-cover border-2 border-gray-300"
+              />
+              <div>
+                <h2 className="text-2xl font-bold">
+                  {selectedInstructor.in_fname}{" "}
+                  {selectedInstructor.in_mname
+                    ? selectedInstructor.in_mname[0] + "."
+                    : ""}{" "}
+                  {selectedInstructor.in_lname}{" "}
+                  {selectedInstructor.in_suffix}
+                </h2>
+                <p className="text-gray-600">{selectedInstructor.in_dept}</p>
+                <p className="text-gray-600">{selectedInstructor.in_email}</p>
+                <p className="text-gray-600">{selectedInstructor.in_cnum}</p>
+              </div>
+            </div>
+            <h3 className="text-xl font-semibold mb-2 border-b pb-2">
+              Subject Load
+            </h3>
+            <div className="space-y-4">
+              {selectedInstructor.subjects.map((sub, index) => {
+                const isEvaluated = isSubjectEvaluated(
+                  selectedInstructor.in_instructorid,
+                  sub.sb_subid
+                );
+                return (
+                  <div
+                    key={index}
+                    className="bg-gray-50 p-3 rounded-md border flex justify-between items-center"
+                  >
+                    <div>
+                      <p className="font-medium">
+                        {sub.sb_name} ({sub.sb_miscode})
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {sub.sb_course} - {sub.sb_units} units
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {semesterMap[sub.sb_semester]} - Year {sub.sb_year}
+                      </p>
+                    </div>
+                    <button
+                      disabled={isEvaluated}
+                      className={
+                        isEvaluated
+                          ? "bg-gray-400 text-white font-bold py-2 px-4 rounded cursor-not-allowed"
+                          : "bg-blue-500 text-white font-bold py-2 px-4 rounded hover:bg-blue-600 transition"
+                      }
+                      onClick={() =>
+                        !isEvaluated &&
+                        handleEvaluateClick(
+                          selectedInstructor.in_instructorid,
+                          sub.sb_subid
+                        )
+                      }
+                    >
+                      {isEvaluated ? "Evaluated" : "Evaluate"}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
