@@ -12,6 +12,7 @@ import AdminLogin from "./pages/00-auth/AdminLogin";
 import AdminPanel from "./pages/01-administration/admin_panel";
 import AdminInstructorList from "./pages/01-administration/instructor_list/admin_instructor_list";
 import AdminModeratorList from "./pages/01-administration/moderator_list/admin_moderator_list";
+import AdminCurriculum from "./pages/01-administration/curriculum/admin_curriculum";
 
 // MODERATOR ROUTES
 import ModeratorPanel from "./pages/02-moderator/moderator_panel";
@@ -71,6 +72,10 @@ function App() {
         <Route path="/adm-moderator-list" element={<AdminModeratorList />} />
         <Route path="/adm-moderator-list/:mod_ID" element={<AdminModeratorList />} />
         <Route path="/adm-moderator-list/:mod_ID/edit" element={<AdminModeratorList />} />
+
+        <Route path="/adm-curriculum" element={<AdminCurriculum />} />
+        <Route path="/adm-curriculum/:subjectId/edit" element={<AdminCurriculum />} />
+        <Route path="/adm-statistics" element={<AdminCurriculum />} />
         </Route>
 
       <Route path="/oops" element={<LoginBlock />} />
