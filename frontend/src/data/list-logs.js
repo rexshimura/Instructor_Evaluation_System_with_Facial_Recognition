@@ -12,11 +12,11 @@ const logData = [
 ];
 
 /*
-  lg_id: Log ID (Unique Identifier)
-  mod_ID: Moderator ID (Links to moderators.js)
-  lg_action: The action performed by the moderator (e.g., "Registered", "Updated", "Deleted")
-  in_id: Instructor ID (Links to list-instructors.js)
-  lg_timestamp: The date and time the action occurred
+  log_id: Log ID 
+  mod_id: Moderator ID 
+  log_action: The action performed by the moderator (e.g., "Registered", "Updated", "Deleted")
+  in_id: Instructor ID 
+  log_date_created: The date and time the action occurred
 */
 
 export default logData;

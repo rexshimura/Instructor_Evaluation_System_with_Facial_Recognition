@@ -56,10 +56,17 @@ export default function EvaluationForm() {
   const handleScoreChange = (questionId, score) => {
     setScores(prev => ({ ...prev, [questionId]: score }));
   };
-  
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Validation: Check if all questions are answered
+    const unanswered = Object.values(scores).some(score => score === 0);
+    if (unanswered) {
+      alert("⚠️ Please answer all evaluation questions before submitting.");
+      return;
+    }
 
     const userString = sessionStorage.getItem("user");
     const student = userString ? JSON.parse(userString) : null;
@@ -72,16 +79,19 @@ export default function EvaluationForm() {
       remarks: remarks,
     };
 
-
     try {
+      setIsLoading(true);
       const res = await axios.post("/eval_submit", evaluationData);
       alert(res.data.message);
       navigate("/Home");
     } catch (err) {
       console.error(err);
       alert("Failed to submit evaluation");
+    } finally {
+      setIsLoading(false);
     }
   };
+
 
 
   return (

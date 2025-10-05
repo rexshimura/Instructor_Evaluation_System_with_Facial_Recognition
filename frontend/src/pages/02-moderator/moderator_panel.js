@@ -24,6 +24,19 @@ export default function ModeratorPanel() {
     return `${mod.mod_lname}, ${mod.mod_fname}${middleInitial}`;
   };
 
+  // Helper function to format date from "2025-10-04T16:00:00.000Z" to "2025-10-04"
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    
+    try {
+      // Split by 'T' and take the first part (the date)
+      return dateString.split('T')[0];
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return dateString; // Return original if parsing fails
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
       <ModeratorNavBar />
@@ -73,7 +86,7 @@ export default function ModeratorPanel() {
               </div>
               <div className="py-2">
                 <p className="text-sm font-medium text-gray-500">Account Created</p>
-                <p className="text-base text-gray-700">{moderator.date_created} by {moderator.created_by}</p>
+                <p className="text-base text-gray-700">{formatDate(moderator.date_created)} by {moderator.created_by}</p>
               </div>
             </div>
           </section>

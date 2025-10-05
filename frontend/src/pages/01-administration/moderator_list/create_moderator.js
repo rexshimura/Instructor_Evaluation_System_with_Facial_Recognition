@@ -14,22 +14,19 @@ export default function CreateModerator({ isOpen, onClose, onSubmit, isLoading }
   const [errors, setErrors] = useState({});
 
   useEffect(() => {
-    // Reset form when modal is closed
-    if (!isOpen) {
+    if (isOpen) {
       setFormData(initialFormState);
       setErrors({});
     }
   }, [isOpen]);
 
   const handleClose = () => {
-    // Directly close without a confirm dialog, as it may not work in an iframe.
     onClose();
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
-    // Clear error when user starts typing
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: null }));
     }
@@ -72,40 +69,90 @@ export default function CreateModerator({ isOpen, onClose, onSubmit, isLoading }
               <label htmlFor="mod_username" className="block text-sm font-medium text-gray-700">
                 Username <span className="text-red-500">*</span>
               </label>
-              <input type="text" name="mod_username" id="mod_username" value={formData.mod_username} onChange={handleChange} className={`mt-1 block w-full p-2 border rounded-md shadow-sm ${errors.mod_username ? 'border-red-500' : 'border-gray-300'}`} />
+              <input 
+                type="text" 
+                name="mod_username" 
+                id="mod_username" 
+                value={formData.mod_username} 
+                onChange={handleChange} 
+                className={`mt-1 block w-full p-2 border rounded-md shadow-sm ${errors.mod_username ? 'border-red-500' : 'border-gray-300'}`}
+                placeholder="Enter unique username"
+              />
               {errors.mod_username && <p className="text-red-500 text-xs mt-1">{errors.mod_username}</p>}
             </div>
             <div>
               <label htmlFor="mod_fname" className="block text-sm font-medium text-gray-700">
                 First Name <span className="text-red-500">*</span>
               </label>
-              <input type="text" name="mod_fname" id="mod_fname" value={formData.mod_fname} onChange={handleChange} className={`mt-1 block w-full p-2 border rounded-md shadow-sm ${errors.mod_fname ? 'border-red-500' : 'border-gray-300'}`} />
+              <input 
+                type="text" 
+                name="mod_fname" 
+                id="mod_fname" 
+                value={formData.mod_fname} 
+                onChange={handleChange} 
+                className={`mt-1 block w-full p-2 border rounded-md shadow-sm ${errors.mod_fname ? 'border-red-500' : 'border-gray-300'}`}
+                placeholder="Enter first name"
+              />
               {errors.mod_fname && <p className="text-red-500 text-xs mt-1">{errors.mod_fname}</p>}
             </div>
              <div>
-              <label htmlFor="mod_mname" className="block text-sm font-medium text-gray-700">Middle Name (Optional)</label>
-              <input type="text" name="mod_mname" id="mod_mname" value={formData.mod_mname} onChange={handleChange} className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm" />
+              <label htmlFor="mod_mname" className="block text-sm font-medium text-gray-700">
+                Middle Name (Optional)
+              </label>
+              <input 
+                type="text" 
+                name="mod_mname" 
+                id="mod_mname" 
+                value={formData.mod_mname} 
+                onChange={handleChange} 
+                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm"
+                placeholder="Enter middle name"
+              />
             </div>
             <div className="md:col-span-2">
               <label htmlFor="mod_lname" className="block text-sm font-medium text-gray-700">
                 Last Name <span className="text-red-500">*</span>
               </label>
-              <input type="text" name="mod_lname" id="mod_lname" value={formData.mod_lname} onChange={handleChange} className={`mt-1 block w-full p-2 border rounded-md shadow-sm ${errors.mod_lname ? 'border-red-500' : 'border-gray-300'}`} />
+              <input 
+                type="text" 
+                name="mod_lname" 
+                id="mod_lname" 
+                value={formData.mod_lname} 
+                onChange={handleChange} 
+                className={`mt-1 block w-full p-2 border rounded-md shadow-sm ${errors.mod_lname ? 'border-red-500' : 'border-gray-300'}`}
+                placeholder="Enter last name"
+              />
               {errors.mod_lname && <p className="text-red-500 text-xs mt-1">{errors.mod_lname}</p>}
             </div>
             <div className="md:col-span-2">
               <label htmlFor="mod_password" className="block text-sm font-medium text-gray-700">
                 Password <span className="text-red-500">*</span>
               </label>
-              <input type="password" name="mod_password" id="mod_password" value={formData.mod_password} onChange={handleChange} className={`mt-1 block w-full p-2 border rounded-md shadow-sm ${errors.mod_password ? 'border-red-500' : 'border-gray-300'}`} />
+              <input 
+                type="password" 
+                name="mod_password" 
+                id="mod_password" 
+                value={formData.mod_password} 
+                onChange={handleChange} 
+                className={`mt-1 block w-full p-2 border rounded-md shadow-sm ${errors.mod_password ? 'border-red-500' : 'border-gray-300'}`}
+                placeholder="Enter password (min. 6 characters)"
+              />
               {errors.mod_password && <p className="text-red-500 text-xs mt-1">{errors.mod_password}</p>}
             </div>
           </div>
           <div className="mt-8 flex justify-end gap-3">
-            <button type="button" onClick={handleClose} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">
+            <button 
+              type="button" 
+              onClick={handleClose} 
+              className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors"
+            >
               Cancel
             </button>
-            <button type="submit" disabled={isLoading} className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 flex items-center gap-2 disabled:bg-purple-400">
+            <button 
+              type="submit" 
+              disabled={isLoading} 
+              className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 flex items-center gap-2 disabled:bg-purple-400 transition-colors"
+            >
               {isLoading && <FaSpinner className="animate-spin" />}
               Create Account
             </button>

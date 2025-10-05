@@ -1,8 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { useParams } from "react-router-dom";
-import instructorData from "../../data/list-instructors";
-import subjectLoad from "../../data/list-subjects";
-import evaluations from "../../data/list-evaluations";
 import { evaluationQuestions } from "../../data/questions";
 import analyzeRemarks from "../../utils/remarkAnalyzer";
 import VerifyNavBar from "../../components/module_layout/VerifyNavBar";
@@ -16,7 +13,6 @@ const getScoreWord = (score) => {
   return "Poor";
 };
 
-
 const SCORE_COLORS = {
   Excellent: "bg-teal-500",
   "Very Good": "bg-blue-500",
@@ -24,6 +20,24 @@ const SCORE_COLORS = {
   "Needs Improvement": "bg-orange-500",
   Poor: "bg-red-500",
 };
+
+// Category mapping for database criteria
+const categoryMapping = {
+  "Course Organization and Content": "ev_C1",
+  "Instructor's Knowledge and Presentation": "ev_C2",
+  "Communication and Interaction": "ev_C3",
+  "Assessment and Feedback": "ev_C4",
+  "Overall Effectiveness": "ev_C5"
+};
+
+// Default zero scores for when no evaluations exist
+const getDefaultScores = () => ({
+  "Course Organization and Content": "0.00",
+  "Instructor's Knowledge and Presentation": "0.00",
+  "Communication and Interaction": "0.00",
+  "Assessment and Feedback": "0.00",
+  "Overall Effectiveness": "0.00"
+});
 
 // --- Child Components for better structure ---
 
@@ -51,7 +65,7 @@ const InfoCard = ({ title, children, icon }) => (
 
 const ScoreBar = ({ category, score }) => {
   const scoreWord = getScoreWord(score);
-  const barColor = SCORE_COLORS[scoreWord] || "bg-gray-400";
+  const barColor = score === 0 ? "bg-gray-400" : (SCORE_COLORS[scoreWord] || "bg-gray-400");
   const barWidth = `${(score / 5) * 100}%`;
 
   return (
@@ -59,7 +73,7 @@ const ScoreBar = ({ category, score }) => {
       <div className="flex justify-between items-center text-sm font-semibold text-slate-700 mb-1">
         <span>{category}</span>
         <span>
-          {scoreWord} ({score})
+          {score === 0 ? "No Data" : `${scoreWord} (${score})`}
         </span>
       </div>
       <div className="bg-slate-200 rounded-full h-3">
@@ -92,138 +106,272 @@ const RemarksSummary = ({ summary }) => (
   </div>
 );
 
-// --- Performance Calculation Logic (Unchanged) ---
-const calculatePerformance = (instructorID) => {
-    // ... (Your original calculation logic)
-    const processedEvaluations = [];
-    let tempEval = {};
-    evaluations.forEach(item => {
-        if (item.ev_evalID) {
-            if (Object.keys(tempEval).length > 0) processedEvaluations.push(tempEval);
-            tempEval = { ...item };
-        } else if (item.ev_scores) {
-            tempEval.ev_scores = item.ev_scores;
-        } else if (item.hasOwnProperty('ev_remarks')) {
-            tempEval.ev_remarks = item.ev_remarks;
-        }
-    });
-    if (Object.keys(tempEval).length > 0) processedEvaluations.push(tempEval);
+// --- Performance Calculation Logic (Updated to handle no evaluations) ---
+const calculatePerformance = (evaluations, instructorID) => {
+  // If no evaluations, return default structure with zeros
+  if (!evaluations || evaluations.length === 0) {
+    return {
+      performanceBySubject: {},
+      overallAverageCategoryScores: getDefaultScores(),
+      overallRemarks: [],
+      totalEvaluations: 0,
+      hasEvaluations: false
+    };
+  }
 
-    const relevantEvaluations = processedEvaluations.filter(e => e.in_instID && e.in_instID.toString() === instructorID);
-    if (relevantEvaluations.length === 0) return null;
+  const relevantEvaluations = evaluations.filter(
+    e => e.in_instructorid && e.in_instructorid.toString() === instructorID
+  );
+  
+  if (relevantEvaluations.length === 0) {
+    return {
+      performanceBySubject: {},
+      overallAverageCategoryScores: getDefaultScores(),
+      overallRemarks: [],
+      totalEvaluations: 0,
+      hasEvaluations: false
+    };
+  }
 
-    const performanceBySubject = {};
-    let allRemarks = [];
-    relevantEvaluations.forEach((evaluation) => {
-        const { sb_subID, ev_scores, ev_remarks } = evaluation;
-        if (!sb_subID || !ev_scores) return;
-        if (!performanceBySubject[sb_subID]) {
-            performanceBySubject[sb_subID] = { evaluations: [], remarks: [], totalScores: {}, averageCategoryScores: {} };
-            evaluationQuestions.forEach((cat) => {
-                performanceBySubject[sb_subID].totalScores[cat.category] = { total: 0, count: 0 };
-            });
-        }
-        performanceBySubject[sb_subID].evaluations.push(evaluation);
-        if (ev_remarks) {
-            performanceBySubject[sb_subID].remarks.push(ev_remarks);
-            allRemarks.push(ev_remarks);
-        }
-        evaluationQuestions.forEach((cat) => {
-            cat.questions.forEach((q) => {
-                const score = ev_scores[`q${q.id}`];
-                if (score !== undefined) {
-                    performanceBySubject[sb_subID].totalScores[cat.category].total += score;
-                    performanceBySubject[sb_subID].totalScores[cat.category].count += 1;
-                }
-            });
-        });
-    });
+  const performanceBySubject = {};
+  let allRemarks = [];
 
-    for (const subjectId in performanceBySubject) {
-        const subjectData = performanceBySubject[subjectId];
-        for (const category in subjectData.totalScores) {
-            const { total, count } = subjectData.totalScores[category];
-            subjectData.averageCategoryScores[category] = count > 0 ? (total / count).toFixed(2) : "0.00";
-        }
+  relevantEvaluations.forEach((evaluation) => {
+    const { ev_subject, ev_remark, ev_c1, ev_c2, ev_c3, ev_c4, ev_c5 } = evaluation;
+    
+    if (!ev_subject) return;
+
+    if (!performanceBySubject[ev_subject]) {
+      performanceBySubject[ev_subject] = { 
+        evaluations: [], 
+        remarks: [], 
+        totalScores: {}, 
+        averageCategoryScores: {} 
+      };
+      
+      // Initialize category scores
+      Object.keys(categoryMapping).forEach(category => {
+        performanceBySubject[ev_subject].totalScores[category] = { total: 0, count: 0 };
+      });
     }
 
-    const overallTotalScores = {};
-    evaluationQuestions.forEach((cat) => {
-        overallTotalScores[cat.category] = { total: 0, count: 0 };
+    performanceBySubject[ev_subject].evaluations.push(evaluation);
+    
+    if (ev_remark) {
+      performanceBySubject[ev_subject].remarks.push(ev_remark);
+      allRemarks.push(ev_remark);
+    }
+
+    // Add scores from database columns
+    const scores = {
+      "Course Organization and Content": ev_c1,
+      "Instructor's Knowledge and Presentation": ev_c2,
+      "Communication and Interaction": ev_c3,
+      "Assessment and Feedback": ev_c4,
+      "Overall Effectiveness": ev_c5
+    };
+
+    Object.entries(scores).forEach(([category, score]) => {
+      if (score !== null && score !== undefined) {
+        performanceBySubject[ev_subject].totalScores[category].total += parseFloat(score);
+        performanceBySubject[ev_subject].totalScores[category].count += 1;
+      }
     });
-    for (const subjectId in performanceBySubject) {
-        for (const category in performanceBySubject[subjectId].totalScores) {
-            overallTotalScores[category].total += performanceBySubject[subjectId].totalScores[category].total;
-            overallTotalScores[category].count += performanceBySubject[subjectId].totalScores[category].count;
-        }
-    }
+  });
 
-    const overallAverageCategoryScores = {};
-    for (const category in overallTotalScores) {
-        const { total, count } = overallTotalScores[category];
-        overallAverageCategoryScores[category] = count > 0 ? (total / count).toFixed(2) : "0.00";
+  // Calculate averages per subject
+  for (const subjectId in performanceBySubject) {
+    const subjectData = performanceBySubject[subjectId];
+    for (const category in subjectData.totalScores) {
+      const { total, count } = subjectData.totalScores[category];
+      subjectData.averageCategoryScores[category] = count > 0 ? (total / count).toFixed(2) : "0.00";
     }
+  }
 
-    return { performanceBySubject, overallAverageCategoryScores, overallRemarks: allRemarks, totalEvaluations: relevantEvaluations.length };
+  // Calculate overall averages
+  const overallTotalScores = {};
+  Object.keys(categoryMapping).forEach(category => {
+    overallTotalScores[category] = { total: 0, count: 0 };
+  });
+
+  for (const subjectId in performanceBySubject) {
+    for (const category in performanceBySubject[subjectId].totalScores) {
+      overallTotalScores[category].total += performanceBySubject[subjectId].totalScores[category].total;
+      overallTotalScores[category].count += performanceBySubject[subjectId].totalScores[category].count;
+    }
+  }
+
+  const overallAverageCategoryScores = {};
+  for (const category in overallTotalScores) {
+    const { total, count } = overallTotalScores[category];
+    overallAverageCategoryScores[category] = count > 0 ? (total / count).toFixed(2) : "0.00";
+  }
+
+  return { 
+    performanceBySubject, 
+    overallAverageCategoryScores, 
+    overallRemarks: allRemarks, 
+    totalEvaluations: relevantEvaluations.length,
+    hasEvaluations: relevantEvaluations.length > 0
+  };
 };
-
 
 // --- Main Profile Component ---
 export default function InstructorProfile() {
   const { instructorID } = useParams();
   const [selectedSubjectId, setSelectedSubjectId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  
+  // State for dynamic data
+  const [instructor, setInstructor] = useState(null);
+  const [subjects, setSubjects] = useState([]);
+  const [evaluations, setEvaluations] = useState([]);
+  const [allSubjects, setAllSubjects] = useState([]);
 
-  const instructor = useMemo(() =>
-    instructorData.find((inst) => inst.in_instructorID.toString() === instructorID),
-    [instructorID]
-  );
+  // Fetch data from backend
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
 
-  const subjectsHandled = useMemo(() => {
-    if (!instructor) return [];
-    return subjectLoad.filter((sub) =>
-      instructor.in_subhandled.includes(sub.sb_subID)
-    );
-  }, [instructor]);
-
-  const performanceData = useMemo(
-    () => calculatePerformance(instructorID),
-    [instructorID]
-  );
-
-  // NEW/REFINED: UseMemo is more efficient for deriving state.
-  // It instantly recalculates when its dependencies change, removing the need for a loading spinner on subject change.
-  const displayedData = useMemo(() => {
-    if (!performanceData) return null;
-
-    if (selectedSubjectId) {
-        const subjectData = performanceData.performanceBySubject[selectedSubjectId];
-        if (subjectData) {
-            return {
-                averageCategoryScores: subjectData.averageCategoryScores,
-                remarks: subjectData.remarks,
-                totalReviews: subjectData.evaluations.length,
-            };
+        // Fetch instructor data
+        const instructorRes = await fetch(`http://localhost:5000/instructor_list`);
+        const instructorsData = await instructorRes.json();
+        
+        if (instructorsData.error) throw new Error(instructorsData.error);
+        
+        const foundInstructor = instructorsData.find(
+          inst => inst.in_instructorid.toString() === instructorID
+        );
+        
+        if (!foundInstructor) {
+          throw new Error("Instructor not found");
         }
+        
+        setInstructor(foundInstructor);
+
+        // Fetch all subjects
+        const subjectsRes = await fetch(`http://localhost:5000/subject_list`);
+        const subjectsData = await subjectsRes.json();
+        
+        if (subjectsData.error) throw new Error(subjectsData.error);
+        setAllSubjects(subjectsData);
+
+        // Fetch evaluations for this instructor
+        try {
+          const evalRes = await fetch(`http://localhost:5000/evaluations/instructor/${instructorID}`);
+          const evalData = await evalRes.json();
+          
+          if (evalData.error && evalData.error !== "No evaluations found") {
+            console.warn("Error fetching evaluations:", evalData.error);
+            setEvaluations([]);
+          } else {
+            setEvaluations(evalData.error ? [] : evalData);
+          }
+        } catch (evalError) {
+          console.warn("Could not fetch evaluations, using empty array:", evalError);
+          setEvaluations([]);
+        }
+
+      } catch (err) {
+        console.error("Error fetching data:", err);
+        setError(err.message);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (instructorID) {
+      fetchData();
+    }
+  }, [instructorID]);
+
+  // Get subjects handled by this instructor
+  const subjectsHandled = useMemo(() => {
+    if (!instructor || !allSubjects.length) return [];
+    
+    return allSubjects.filter(subject => 
+      instructor.in_subhandled && 
+      instructor.in_subhandled.includes(String(subject.sb_subid))
+    );
+  }, [instructor, allSubjects]);
+
+  // Calculate performance data
+  const performanceData = useMemo(
+    () => calculatePerformance(evaluations, instructorID),
+    [evaluations, instructorID]
+  );
+
+  // Determine displayed data
+  const displayedData = useMemo(() => {
+    if (!performanceData) {
+      return {
+        averageCategoryScores: getDefaultScores(),
+        remarks: [],
+        totalReviews: 0,
+        hasEvaluations: false
+      };
     }
 
-    // Fallback to overall data if no subject is selected or found
+    if (selectedSubjectId) {
+      const subjectData = performanceData.performanceBySubject[selectedSubjectId];
+      if (subjectData) {
+        return {
+          averageCategoryScores: subjectData.averageCategoryScores,
+          remarks: subjectData.remarks,
+          totalReviews: subjectData.evaluations.length,
+          hasEvaluations: performanceData.hasEvaluations
+        };
+      } else {
+        // Subject selected but no data for that subject
+        return {
+          averageCategoryScores: getDefaultScores(),
+          remarks: [],
+          totalReviews: 0,
+          hasEvaluations: false
+        };
+      }
+    }
+
+    // Fallback to overall data
     return {
-        averageCategoryScores: performanceData.overallAverageCategoryScores,
-        remarks: performanceData.overallRemarks,
-        totalReviews: performanceData.totalEvaluations,
+      averageCategoryScores: performanceData.overallAverageCategoryScores,
+      remarks: performanceData.overallRemarks,
+      totalReviews: performanceData.totalEvaluations,
+      hasEvaluations: performanceData.hasEvaluations
     };
   }, [performanceData, selectedSubjectId]);
 
-  // NEW/REFINED: This effect now only handles the initial loading spinner.
-  // The empty dependency array [] means it runs only ONCE when the component mounts.
-  useEffect(() => {
-    const timer = setTimeout(() => {
-        setIsLoading(false);
-    }, 300); // Simulate initial processing time to avoid layout flash
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex flex-col items-center p-4 sm:p-6">
+        <VerifyNavBar />
+        <div className="w-full max-w-7xl bg-white rounded-lg shadow-xl p-8 mt-16 flex justify-center items-center h-64">
+          <LoadingSpinner />
+        </div>
+      </div>
+    );
+  }
 
-    return () => clearTimeout(timer);
-  }, []);
+  if (error) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex flex-col items-center p-4 sm:p-6">
+        <VerifyNavBar />
+        <div className="w-full max-w-7xl bg-white rounded-lg shadow-xl p-8 mt-16 text-center">
+          <h2 className="text-2xl font-bold text-red-600 mb-4">Error</h2>
+          <p className="text-slate-600 mb-4">{error}</p>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!instructor) {
     return (
@@ -253,8 +401,8 @@ export default function InstructorProfile() {
         {/* --- Instructor Information --- */}
         <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <InfoCard title="Personal Information" icon="👤">
-            <p><strong>Full Name:</strong> {`${instructor.in_fname} ${instructor.in_mname} ${instructor.in_lname} ${instructor.in_suffix}`}</p>
-            <p><strong>Date of Birth:</strong> {instructor.in_dob}</p>
+            <p><strong>Full Name:</strong> {`${instructor.in_fname} ${instructor.in_mname || ''} ${instructor.in_lname} ${instructor.in_suffix || ''}`}</p>
+            <p><strong>Date of Birth:</strong> {new Date(instructor.in_dob).toLocaleDateString()}</p>
             <p><strong>Sex:</strong> {instructor.in_sex === 'M' ? 'Male' : 'Female'}</p>
             <p><strong>Department:</strong> {instructor.in_dept}</p>
           </InfoCard>
@@ -280,10 +428,10 @@ export default function InstructorProfile() {
             </button>
             {subjectsHandled.map((subject) => (
               <button
-                key={subject.sb_subID}
-                onClick={() => setSelectedSubjectId(subject.sb_subID)}
+                key={subject.sb_subid}
+                onClick={() => setSelectedSubjectId(subject.sb_subid)}
                 className={`p-3 text-left rounded-lg shadow-sm border transition-all duration-200 ${
-                  selectedSubjectId === subject.sb_subID
+                  selectedSubjectId === subject.sb_subid
                     ? "bg-blue-600 text-white border-blue-700 font-bold"
                     : "bg-white hover:bg-blue-50 hover:border-blue-300"
                 }`}
@@ -297,56 +445,75 @@ export default function InstructorProfile() {
 
         {/* --- Performance Metrics --- */}
         <section>
-          <h3 className="text-2xl font-semibold mb-4 border-b pb-2 text-slate-800">Performance Metrics</h3>
-          {isLoading ? (
-            <LoadingSpinner />
-          ) : displayedData ? (
-            <div className="bg-slate-50 p-6 rounded-lg">
-              <p className="text-xl font-bold text-slate-800 mb-4">
-                {selectedSubjectId
-                  ? `Results for ${subjectsHandled.find(s => s.sb_subID === selectedSubjectId)?.sb_name || 'Subject'}`
-                  : "Overall Performance Summary"}
-                <span className="text-base font-normal text-slate-600 ml-2">
-                  ({displayedData.totalReviews} reviews)
-                </span>
-              </p>
+          <h3 className="text-2xl font-semibold mb-4 border-b pb-2 text-slate-800">
+            Performance Metrics
+            {!displayedData.hasEvaluations && (
+              <span className="text-sm font-normal text-orange-600 ml-2">
+                (No evaluations yet)
+              </span>
+            )}
+          </h3>
+          
+          <div className="bg-slate-50 p-6 rounded-lg">
+            <p className="text-xl font-bold text-slate-800 mb-4">
+              {selectedSubjectId
+                ? `Results for ${subjectsHandled.find(s => s.sb_subid === selectedSubjectId)?.sb_name || 'Subject'}`
+                : "Overall Performance Summary"}
+              <span className="text-base font-normal text-slate-600 ml-2">
+                ({displayedData.totalReviews} reviews)
+              </span>
+            </p>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                <div className="space-y-4">
-                  {Object.entries(displayedData.averageCategoryScores).map(([category, score]) => (
-                    <ScoreBar key={category} category={category} score={parseFloat(score)} />
-                  ))}
-                </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <div className="space-y-4">
+                {Object.entries(displayedData.averageCategoryScores).map(([category, score]) => (
+                  <ScoreBar key={category} category={category} score={parseFloat(score)} />
+                ))}
+              </div>
 
+              <div>
+                {remarksSummary && displayedData.totalReviews > 0 && (
+                  <RemarksSummary summary={remarksSummary} />
+                )}
+                
+                {/* Show remarks summary with zeros if no evaluations */}
+                {!displayedData.hasEvaluations && (
+                  <RemarksSummary summary={{ positiveCount: 0, negativeCount: 0, neutralCount: 0 }} />
+                )}
+                
                 <div>
-                  {remarksSummary && displayedData.totalReviews > 0 && (
-                    <RemarksSummary summary={remarksSummary} />
-                  )}
-                  <div>
-                    <p className="text-lg font-bold text-slate-800 mb-2">Student Remarks</p>
-                    <ul className="space-y-2 h-36 overflow-y-auto bg-white p-3 rounded border border-slate-200 custom-scrollbar">
-                      {hasRemarks ? (
-                        displayedData.remarks.filter(r => r && r.trim()).map((remark, index) => (
-                          <li key={index} className="border-l-4 border-blue-300 pl-3 text-slate-700 italic text-sm">
-                            "{remark}"
-                          </li>
-                        ))
-                      ) : (
-                         <EmptyState message="No remarks available for this view." />
-                      )}
-                    </ul>
-                  </div>
+                  <p className="text-lg font-bold text-slate-800 mb-2">Student Remarks</p>
+                  <ul className="space-y-2 h-36 overflow-y-auto bg-white p-3 rounded border border-slate-200 custom-scrollbar">
+                    {hasRemarks ? (
+                      displayedData.remarks.filter(r => r && r.trim()).map((remark, index) => (
+                        <li key={index} className="border-l-4 border-blue-300 pl-3 text-slate-700 italic text-sm">
+                          "{remark}"
+                        </li>
+                      ))
+                    ) : (
+                      <EmptyState message={
+                        displayedData.hasEvaluations 
+                          ? "No remarks available for this view." 
+                          : "No evaluations submitted yet."
+                      } />
+                    )}
+                  </ul>
                 </div>
               </div>
             </div>
-          ) : (
-            <EmptyState message="No performance data available for this instructor yet." />
-          )}
+
+            {/* Information banner when no evaluations */}
+            {!displayedData.hasEvaluations && (
+              <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                <p className="text-yellow-800 text-sm">
+                  <strong>Note:</strong> This instructor has not been evaluated yet. 
+                  The performance metrics will display actual data once students submit evaluations.
+                </p>
+              </div>
+            )}
+          </div>
         </section>
       </main>
-      {/*<footer className="w-full max-w-7xl mt-8 p-4 text-center text-slate-500 text-sm">*/}
-      {/*  <p>&copy; {new Date().getFullYear()} Instructor Evaluation System. All rights reserved.</p>*/}
-      {/*</footer>*/}
     </div>
   );
 }
