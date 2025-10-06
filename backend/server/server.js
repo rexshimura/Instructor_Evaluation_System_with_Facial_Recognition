@@ -262,14 +262,109 @@ app.get("/instructor_list", async (req, res) => {
   }
 });
 
+// 👨‍🏫 Create new instructor
+app.post("/instructors", async (req, res) => {
+  try {
+    const { 
+      in_fname, 
+      in_mname, 
+      in_lname, 
+      in_suffix, 
+      in_dob, 
+      in_sex, 
+      in_email, 
+      in_cnum, 
+      in_dept, 
+      in_subhandled, // This should be an array of subject IDs like [101, 202, 303]
+      moderator_id
+    } = req.body;
+
+    console.log('Received instructor data:', req.body);
+
+    // Check if email already exists
+    const existingInstructor = await pool.query(
+      "SELECT in_instructorid FROM instructors WHERE in_email = $1",
+      [in_email]
+    );
+
+    if (existingInstructor.rows.length > 0) {
+      return res.status(400).json({ error: "Instructor with this email already exists" });
+    }
+
+    // Convert subject IDs to PostgreSQL array format if they're numbers
+    let subhandledArray = in_subhandled;
+    if (Array.isArray(in_subhandled) && in_subhandled.length > 0) {
+      // Ensure all are strings (PostgreSQL TEXT[] expects strings)
+      subhandledArray = in_subhandled.map(id => id.toString());
+    }
+
+    // The trigger will automatically set the instructor ID based on department
+    const result = await pool.query(
+      `INSERT INTO instructors 
+        (in_fname, in_mname, in_lname, in_suffix, in_dob, in_sex, in_email, in_cnum, in_dept, in_subhandled) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+       RETURNING *`,
+      [in_fname, in_mname, in_lname, in_suffix, in_dob, in_sex, in_email, in_cnum, in_dept, subhandledArray]
+    );
+
+    const newInstructor = result.rows[0];
+    console.log('New instructor created:', newInstructor);
+
+    // Log the action in moderator_logs if moderator_id is provided
+    if (moderator_id) {
+      await pool.query(
+        `INSERT INTO moderator_logs (mod_id, log_action, ins_id) 
+         VALUES ($1, $2, $3)`,
+        [moderator_id, 'Registered', newInstructor.in_instructorid]
+      );
+      console.log('Moderator log created for moderator:', moderator_id);
+    }
+
+    res.status(201).json({
+      message: "Instructor created successfully",
+      instructor: newInstructor,
+    });
+  } catch (err) {
+    console.error("Error creating instructor:", err);
+    console.error("Error details:", err.message);
+    res.status(500).json({ error: "Failed to create instructor: " + err.message });
+  }
+});
+
 // 👩‍🎓 Get all students
 app.get("/student_list", async (req, res) => {
   try {
     const result = await pool.query("SELECT * FROM students ORDER BY st_studid ASC");
+    // PostgreSQL returns lowercase field names by default
     res.json(result.rows);
   } catch (err) {
     console.error("Error fetching students:", err);
     res.status(500).json({ error: "Failed to fetch students" });
+  }
+});
+
+// 📋 Get moderator logs with instructor details
+app.get("/moderator_logs", async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT 
+        ml.*,
+        m.mod_username,
+        m.mod_fname as mod_first_name,
+        m.mod_lname as mod_last_name,
+        i.in_fname as instructor_first_name,
+        i.in_lname as instructor_last_name,
+        i.in_email as instructor_email
+      FROM moderator_logs ml
+      LEFT JOIN moderators m ON ml.mod_id = m.mod_id
+      LEFT JOIN instructors i ON ml.ins_id = i.in_instructorid
+      ORDER BY ml.log_date_created DESC
+    `);
+    
+    res.json(result.rows);
+  } catch (err) {
+    console.error("Error fetching moderator logs:", err);
+    res.status(500).json({ error: "Failed to fetch moderator logs" });
   }
 });
 
@@ -281,6 +376,108 @@ app.get("/subject_list", async (req, res) => {
   } catch (err) {
     console.error("Error fetching subjects:", err);
     res.status(500).json({ error: "Failed to fetch subjects" });
+  }
+});
+
+// 📚 Add new subject
+app.post("/subject_list", async (req, res) => {
+  try {
+    const { sb_name, sb_miscode, sb_semester, sb_year, sb_units, sb_course } = req.body;
+
+    // Check if subject with same MIS code already exists
+    const existingSubject = await pool.query(
+      "SELECT sb_subid FROM subjects WHERE sb_miscode = $1",
+      [sb_miscode]
+    );
+
+    if (existingSubject.rows.length > 0) {
+      return res.status(400).json({ error: "Subject with this MIS code already exists" });
+    }
+
+    // The trigger will automatically set sb_subid based on year
+    const result = await pool.query(
+      `INSERT INTO subjects 
+        (sb_name, sb_miscode, sb_semester, sb_year, sb_units, sb_course) 
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING *`,
+      [sb_name, sb_miscode, sb_semester, sb_year, sb_units, sb_course]
+    );
+
+    res.status(201).json({
+      message: "Subject created successfully",
+      ...result.rows[0]
+    });
+  } catch (err) {
+    console.error("Error creating subject:", err);
+    res.status(500).json({ error: "Failed to create subject" });
+  }
+});
+
+// 📚 Update subject
+app.put("/subject_list/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { sb_name, sb_miscode, sb_semester, sb_year, sb_units, sb_course } = req.body;
+
+    // Check if subject exists
+    const existingSubject = await pool.query(
+      "SELECT sb_subid FROM subjects WHERE sb_subid = $1",
+      [id]
+    );
+
+    if (existingSubject.rows.length === 0) {
+      return res.status(404).json({ error: "Subject not found" });
+    }
+
+    // Check if MIS code is already used by another subject
+    const duplicateMiscode = await pool.query(
+      "SELECT sb_subid FROM subjects WHERE sb_miscode = $1 AND sb_subid != $2",
+      [sb_miscode, id]
+    );
+
+    if (duplicateMiscode.rows.length > 0) {
+      return res.status(400).json({ error: "MIS code already used by another subject" });
+    }
+
+    const result = await pool.query(
+      `UPDATE subjects 
+       SET sb_name = $1, sb_miscode = $2, sb_semester = $3, sb_year = $4, sb_units = $5, sb_course = $6
+       WHERE sb_subid = $7
+       RETURNING *`,
+      [sb_name, sb_miscode, sb_semester, sb_year, sb_units, sb_course, id]
+    );
+
+    res.json({
+      message: "Subject updated successfully",
+      ...result.rows[0]
+    });
+  } catch (err) {
+    console.error("Error updating subject:", err);
+    res.status(500).json({ error: "Failed to update subject" });
+  }
+});
+
+// 📚 Delete subject
+app.delete("/subject_list/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    // Check if subject exists
+    const existingSubject = await pool.query(
+      "SELECT sb_subid FROM subjects WHERE sb_subid = $1",
+      [id]
+    );
+
+    if (existingSubject.rows.length === 0) {
+      return res.status(404).json({ error: "Subject not found" });
+    }
+
+    await pool.query("DELETE FROM subjects WHERE sb_subid = $1", [id]);
+
+    res.json({ message: "Subject deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting subject:", err);
+    res.status(500).json({ error: "Failed to delete subject" });
   }
 });
 

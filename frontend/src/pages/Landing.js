@@ -128,7 +128,7 @@ export default function LandingPage() {
         </div>
       </section>
       <ScrollToTopButton />
-      <GeneralFooter/>
+      <GeneralFooter />
     </div>
   );
 }
