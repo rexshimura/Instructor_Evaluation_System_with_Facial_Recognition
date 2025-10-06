@@ -40,7 +40,7 @@ INSTALLED_APPS = [
 
 
     # SEPARATED
-    'base,.apps.BaseConfig',
+    'base.apps.BaseConfig',
 ]
 
 MIDDLEWARE = [
