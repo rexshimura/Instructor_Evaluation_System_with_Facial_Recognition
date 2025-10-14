@@ -394,7 +394,7 @@ export default function AdminStatistics() {
         </header>
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-            <SystemStatCard label="Total Admins" count={data.admins.length} icon={<FiBriefcase className="text-indigo-600 text-xl" />} />
+            <SystemStatCard label="Total Admins" count={1} icon={<FiBriefcase className="text-indigo-600 text-xl" />} />
             <SystemStatCard label="Total Moderators" count={data.moderators.length} to="/adm-moderator-list" icon={<FiUserCheck className="text-indigo-600 text-xl" />} />
             <SystemStatCard label="Total Instructors" count={data.instructors.length} to="/adm-instructor-list" icon={<FiAward className="text-indigo-600 text-xl" />} />
             <SystemStatCard label="Total Students" count={data.students.length} icon={<FiUsers className="text-indigo-600 text-xl" />} />
