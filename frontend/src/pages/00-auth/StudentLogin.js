@@ -2,7 +2,6 @@ import React, { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import InputText from "../../components/module_input/InputText";
 import InputDateOfBirth from "../../components/module_input/InputDateOfBirth";
-// import studentData from "../../data/list-students";
 import LoadingOverlay from "../../components/module_feedback/LoadingOverlay";
 import { FaArrowLeft, FaUserShield } from "react-icons/fa";
 import axios from "axios"
@@ -19,23 +18,52 @@ export default function StudentLogin() {
     setIsLoading(true);
     setMessage("");
 
+    // Validate inputs
+    if (!studentId.trim()) {
+      setMessage("❌ Please enter Student ID");
+      setIsLoading(false);
+      return;
+    }
+
+    if (!dob) {
+      setMessage("❌ Please enter Date of Birth");
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      const res = await axios.post("/student_login", {
-        studentId,
-        dob,
+      const res = await axios.post("/students/login", {
+        studentId: studentId.trim(),
+        dob: dob,
       });
 
-      // ✅ Save logged-in student in session
-      sessionStorage.setItem("user", JSON.stringify(res.data.student));
+      // ✅ Save logged-in student in session - matching backend response structure
+      const studentData = res.data.student;
+      sessionStorage.setItem("user", JSON.stringify(studentData));
       sessionStorage.setItem("role", "student");
+      sessionStorage.setItem("studentId", studentData.stud_id);
 
+      console.log("Student login successful:", studentData);
       navigate("/home");
     } catch (err) {
-      setMessage("❌ Invalid Student ID or Date of Birth.");
+      // ✅ Enhanced error handling based on backend responses
+      if (err.response && err.response.data) {
+        const errorData = err.response.data;
+        if (errorData.message) {
+          setMessage(`❌ ${errorData.message}`);
+        } else if (errorData.error) {
+          setMessage(`❌ ${errorData.error}`);
+        } else {
+          setMessage("❌ Invalid Student ID or Date of Birth.");
+        }
+      } else if (err.code === 'NETWORK_ERROR' || err.code === 'ECONNREFUSED') {
+        setMessage("❌ Cannot connect to server. Please try again later.");
+      } else {
+        setMessage("❌ Invalid Student ID or Date of Birth.");
+      }
       setIsLoading(false);
     }
   };
-
 
   return (
     <>
@@ -77,21 +105,23 @@ export default function StudentLogin() {
                   onChange={(e) => setStudentId(e.target.value)}
                   placeholder="Enter your Student ID"
                   type="text"
+                  required
                 />
                 <InputDateOfBirth
                   label="Date of Birth"
                   value={dob}
                   onChange={(e) => setDob(e.target.value)}
+                  required
                 />
               </div>
 
               <div className="mt-6 flex items-center gap-3">
                 <button
                   type="submit"
-                  className="flex-grow bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
-                  disabled={isLoading}
+                  className="flex-grow bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition disabled:bg-blue-300 disabled:cursor-not-allowed"
+                  disabled={isLoading || !studentId || !dob}
                 >
-                  Login
+                  {isLoading ? "Logging in..." : "Login"}
                 </button>
 
                 <div className="relative group">
@@ -111,6 +141,18 @@ export default function StudentLogin() {
                 <p className="mt-4 text-center text-red-500">{message}</p>
               )}
             </form>
+
+            {/* Student Information Helper */}
+            <div className="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+              <h3 className="text-sm font-semibold text-blue-800 mb-2">Login Information</h3>
+              <p className="text-xs text-blue-600">
+                • Student IDs are automatically generated (YYYY + 4 digits)
+                <br />
+                • Use your registered Date of Birth
+                <br />
+                • Contact administrator for login issues
+              </p>
+            </div>
           </div>
         </div>
       </div>

@@ -20,7 +20,7 @@ export default function ModeratorPanel() {
   // Helper function to get the full name (Last Name, First Name Middle Initial)
   const getFullName = (mod) => {
     // Only include the middle initial if it exists
-    const middleInitial = mod.mod_mname ? ` ${mod.mod_mname}.` : '';
+    const middleInitial = mod.mod_mname ? ` ${mod.mod_mname.charAt(0)}.` : '';
     return `${mod.mod_lname}, ${mod.mod_fname}${middleInitial}`;
   };
 
@@ -78,7 +78,7 @@ export default function ModeratorPanel() {
               </div>
               <div className="py-2 border-b border-gray-100">
                 <p className="text-sm font-medium text-gray-500">Moderator ID</p>
-                <p className="text-lg font-semibold text-gray-800">{moderator.mod_ID}</p>
+                <p className="text-lg font-semibold text-gray-800">{moderator.mod_id}</p>
               </div>
               <div className="py-2 border-b border-gray-100">
                 <p className="text-sm font-medium text-gray-500">Username</p>
@@ -101,25 +101,43 @@ export default function ModeratorPanel() {
               Use the navigation bar above or the quick-access cards below to manage the system.
             </p>
 
-            {/* Functional Quick-Access Cards with new links */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* Functional Quick-Access Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
 
-              {/* Card 1: View Instructors (Renamed) */}
+              {/* Card 1: View Instructors */}
               <a href="/mod-instructor-list" className="block p-4 border border-gray-200 rounded-lg hover:bg-green-50 transition duration-150 group">
                 <h3 className="text-lg font-semibold text-green-700 group-hover:text-green-900">View Instructors</h3>
                 <p className="text-sm text-gray-500">View and search details of existing faculty and instructor profiles.</p>
               </a>
 
-              {/* Card 2: Register Instructor (New Card) */}
+              {/* Card 2: Register Instructor */}
               <a href="/mod-register-instructor" className="block p-4 border border-gray-200 rounded-lg hover:bg-blue-50 transition duration-150 group">
                 <h3 className="text-lg font-semibold text-blue-700 group-hover:text-blue-900">Register Instructor</h3>
                 <p className="text-sm text-gray-500">Input new instructor's personal info, contacts, and subject load.</p>
               </a>
 
-              {/* Card 3: Register Face (Existing Card) */}
+              {/* Card 3: Register Face */}
               <a href="/mod-record-face" className="block p-4 border border-gray-200 rounded-lg hover:bg-indigo-50 transition duration-150 group">
                 <h3 className="text-lg font-semibold text-indigo-700 group-hover:text-indigo-900">Register Face</h3>
                 <p className="text-sm text-gray-500">Capture and register facial recognition data for new instructors.</p>
+              </a>
+
+              {/* Card 4: Student Management */}
+              <a href="/mod-student-list" className="block p-4 border border-gray-200 rounded-lg hover:bg-purple-50 transition duration-150 group">
+                <h3 className="text-lg font-semibold text-purple-700 group-hover:text-purple-900">Manage Students</h3>
+                <p className="text-sm text-gray-500">Add, update, delete students and assign them to sections.</p>
+              </a>
+
+              {/* Card 5: Section Management */}
+              <a href="/mod-section-list" className="block p-4 border border-gray-200 rounded-lg hover:bg-orange-50 transition duration-150 group">
+                <h3 className="text-lg font-semibold text-orange-700 group-hover:text-orange-900">Manage Sections</h3>
+                <p className="text-sm text-gray-500">Create and manage class sections, assign instructors and subjects.</p>
+              </a>
+
+              {/* Card 6: Instructor Sections */}
+              <a href="/mod-instructor-sections" className="block p-4 border border-gray-200 rounded-lg hover:bg-teal-50 transition duration-150 group">
+                <h3 className="text-lg font-semibold text-teal-700 group-hover:text-teal-900">Assign Sections</h3>
+                <p className="text-sm text-gray-500">Assign instructors to specific class sections and subjects.</p>
               </a>
 
             </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import ModeratorNavBar from "../../../components/module_layout/ModeratorNavBar";
 
@@ -15,35 +15,51 @@ const InstructorList = () => {
   const [filterCourse, setFilterCourse] = useState("All");
   const [filterYear, setFilterYear] = useState("All");
   const [filterSemester, setFilterSemester] = useState("All");
-  const [instructorsWithSubjects, setInstructorsWithSubjects] = useState([]);
+  const [instructors, setInstructors] = useState([]);
+  const [subjects, setSubjects] = useState([]);
+  const [instructorSubjects, setInstructorSubjects] = useState([]);
   const [sections, setSections] = useState([]);
   const [students, setStudents] = useState([]);
+  const [sectionAssignments, setSectionAssignments] = useState([]); // NEW: For section-subject-instructor relationships
+  const [studentSections, setStudentSections] = useState([]); // NEW: For student-section relationships
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const { instructorID, subjectID } = useParams();
   const navigate = useNavigate();
 
-  // Helper function to ensure subjects is always an array
-  const ensureSubjectsArray = (subjects) => {
-    if (!subjects) return [];
-    if (Array.isArray(subjects)) return subjects;
-    if (typeof subjects === 'string') {
-      try {
-        return JSON.parse(subjects);
-      } catch (e) {
-        console.warn('Failed to parse subjects string:', subjects);
-        return [];
-      }
-    }
-    return [];
-  };
+  // Process instructors with their subjects using useMemo
+  const instructorsWithSubjects = useMemo(() => {
+    return instructors.map(instructor => {
+      const instructorSubjectLinks = instructorSubjects.filter(
+        link => link.ins_id === instructor.ins_id
+      );
+      
+      const instructorSubjectsList = instructorSubjectLinks.map(link => {
+        const subject = subjects.find(sub => sub.sub_id === link.sub_id);
+        return subject ? {
+          sb_subid: subject.sub_id,
+          sb_name: subject.sub_name,
+          sb_miscode: subject.sub_miscode,
+          sb_course: subject.sub_course,
+          sb_year: subject.sub_year,
+          sb_semester: subject.sub_semester,
+          sb_units: subject.sub_units
+        } : null;
+      }).filter(Boolean);
 
-  // Helper function to check if array contains a value (handles string/number conversion)
-  const arrayContains = (arr, value) => {
-    if (!arr || !Array.isArray(arr)) return false;
-    return arr.some(item => String(item) === String(value));
-  };
+      return {
+        in_instructorid: instructor.ins_id,
+        in_fname: instructor.ins_fname,
+        in_mname: instructor.ins_mname,
+        in_lname: instructor.ins_lname,
+        in_suffix: instructor.ins_suffix,
+        in_dept: instructor.ins_dept,
+        face: instructor.ins_profile_pic || "/profiles/profile-default.png",
+        subjects: instructorSubjectsList
+      };
+    });
+  }, [instructors, subjects, instructorSubjects]);
 
   // Fetch data from backend
   useEffect(() => {
@@ -51,34 +67,49 @@ const InstructorList = () => {
       try {
         setLoading(true);
         
-        const [instructorsRes, subjectsRes, sectionsRes, studentsRes] = await Promise.all([
-          fetch("http://localhost:5000/instructor_list").then(res => res.json()),
-          fetch("http://localhost:5000/subject_list").then(res => res.json()),
-          fetch("http://localhost:5000/section_list").then(res => res.json()),
-          fetch("http://localhost:5000/student_list").then(res => res.json())
+        // Fetch all required data
+        const [
+          instructorsRes, 
+          subjectsRes, 
+          instructorSubjectsRes, 
+          sectionsRes, 
+          studentsRes,
+          sectionAssignmentsRes, // NEW: Fetch section assignments
+          studentSectionsRes     // NEW: Fetch student-section relationships
+        ] = await Promise.all([
+          fetch("/instructors").then(res => res.json()),
+          fetch("/subjects").then(res => res.json()),
+          fetch("/instructor-subject").then(res => res.json()),
+          fetch("/sections").then(res => res.json()),
+          fetch("/students").then(res => res.json()),
+          fetch("/section-assignments").then(res => res.json()), // NEW
+          fetch("/student-sections").then(res => res.json())    // NEW
         ]);
 
-        if (instructorsRes.error) throw new Error(instructorsRes.error);
-        if (subjectsRes.error) throw new Error(subjectsRes.error);
-        if (sectionsRes.error) throw new Error(sectionsRes.error);
-        if (studentsRes.error) throw new Error(studentsRes.error);
+        // Handle errors
+        const responses = [
+          { data: instructorsRes, name: "instructors" },
+          { data: subjectsRes, name: "subjects" },
+          { data: instructorSubjectsRes, name: "instructor-subject" },
+          { data: sectionsRes, name: "sections" },
+          { data: studentsRes, name: "students" },
+          { data: sectionAssignmentsRes, name: "section-assignments" },
+          { data: studentSectionsRes, name: "student-sections" }
+        ];
 
-        // Process instructors with their subjects
-        const processedInstructors = instructorsRes.map(instructor => {
-          const instructorSubjects = subjectsRes.filter(subject => 
-            instructor.in_subhandled && 
-            arrayContains(instructor.in_subhandled, subject.sb_subid)
-          );
+        for (const response of responses) {
+          if (response.data.error) {
+            throw new Error(`Failed to load ${response.name}: ${response.data.error}`);
+          }
+        }
 
-          return {
-            ...instructor,
-            subjects: instructorSubjects
-          };
-        });
-
-        setInstructorsWithSubjects(processedInstructors);
+        setInstructors(instructorsRes);
+        setSubjects(subjectsRes);
+        setInstructorSubjects(instructorSubjectsRes);
         setSections(sectionsRes);
         setStudents(studentsRes);
+        setSectionAssignments(sectionAssignmentsRes); // NEW
+        setStudentSections(studentSectionsRes);       // NEW
         setError(null);
       } catch (err) {
         console.error("Error fetching data:", err);
@@ -91,6 +122,7 @@ const InstructorList = () => {
     fetchData();
   }, []);
 
+  // Handle instructor selection and subject expansion
   useEffect(() => {
     if (instructorID && instructorsWithSubjects.length > 0) {
       const inst = instructorsWithSubjects.find(
@@ -108,40 +140,94 @@ const InstructorList = () => {
     }
   }, [instructorID, subjectID, instructorsWithSubjects, navigate]);
 
-  const filteredInstructors = instructorsWithSubjects.filter((inst) => {
-    const subjects = ensureSubjectsArray(inst.subjects);
-    
-    if (filterCourse !== "All") {
-      const teachesCourse = subjects.some(
-        (sub) => sub && sub.sb_course === filterCourse
+  // Filter instructors based on search and filters
+  const filteredInstructors = useMemo(() => {
+    return instructorsWithSubjects.filter((inst) => {
+      const subjects = inst.subjects || [];
+      
+      // Apply filters
+      if (filterCourse !== "All") {
+        const teachesCourse = subjects.some(
+          (sub) => sub && sub.sb_course === filterCourse
+        );
+        if (!teachesCourse) return false;
+      }
+      if (filterYear !== "All") {
+        const teachesYear = subjects.some(
+          (sub) => sub && String(sub.sb_year) === filterYear
+        );
+        if (!teachesYear) return false;
+      }
+      if (filterSemester !== "All") {
+        const teachesSem = subjects.some(
+          (sub) => sub && String(sub.sb_semester) === filterSemester
+        );
+        if (!teachesSem) return false;
+      }
+      
+      // Apply search
+      const query = searchQuery.toLowerCase();
+      return (
+        inst.in_fname.toLowerCase().includes(query) ||
+        inst.in_lname.toLowerCase().includes(query) ||
+        inst.in_dept.toLowerCase().includes(query) ||
+        subjects.some(
+          (sub) =>
+            sub &&
+            (sub.sb_name.toLowerCase().includes(query) ||
+            sub.sb_miscode.toLowerCase().includes(query))
+        )
       );
-      if (!teachesCourse) return false;
+    });
+  }, [instructorsWithSubjects, searchQuery, filterCourse, filterYear, filterSemester]);
+
+  // Get subjects to show in modal
+  const subjectsToShow = useMemo(() => {
+    if (!selectedInstructor) return [];
+    if (expandedSubjectId) {
+      return (selectedInstructor.subjects || []).filter(s => s && String(s.sb_subid) === expandedSubjectId);
     }
-    if (filterYear !== "All") {
-      const teachesYear = subjects.some(
-        (sub) => sub && String(sub.sb_year) === filterYear
-      );
-      if (!teachesYear) return false;
-    }
-    if (filterSemester !== "All") {
-      const teachesSem = subjects.some(
-        (sub) => sub && String(sub.sb_semester) === filterSemester
-      );
-      if (!teachesSem) return false;
-    }
-    const query = searchQuery.toLowerCase();
-    return (
-      inst.in_fname.toLowerCase().includes(query) ||
-      inst.in_lname.toLowerCase().includes(query) ||
-      inst.in_dept.toLowerCase().includes(query) ||
-      subjects.some(
-        (sub) =>
-          sub &&
-          (sub.sb_name.toLowerCase().includes(query) ||
-          sub.sb_miscode.toLowerCase().includes(query))
-      )
+    return selectedInstructor.subjects || [];
+  }, [selectedInstructor, expandedSubjectId]);
+
+  // NEW: Get students by section using student-sections relationships
+  const getStudentsBySection = (sectionId) => {
+    const studentSectionLinks = studentSections.filter(
+      ss => ss.section_id === sectionId
     );
-  });
+    
+    return studentSectionLinks.map(ss => {
+      const student = students.find(s => s.stud_id === ss.stud_id);
+      return student ? {
+        ...student,
+        studentSectionId: ss.studSect_id
+      } : null;
+    }).filter(Boolean).sort((a, b) => a.stud_lname.localeCompare(b.stud_lname));
+  };
+
+  // NEW: Find sections for instructor and subject using section-assignments
+  const getAssignedSections = (instructorId, subject) => {
+    // Get instructor-subject link ID
+    const instructorSubjectLink = instructorSubjects.find(
+      is => is.ins_id === instructorId && is.sub_id === subject.sb_subid
+    );
+
+    if (!instructorSubjectLink) return [];
+
+    // Find section assignments for this instructor-subject combination
+    const assignments = sectionAssignments.filter(
+      assignment => assignment.insub_id === instructorSubjectLink.insub_id
+    );
+
+    // Get the actual section objects
+    return assignments.map(assignment => {
+      const section = sections.find(s => s.section_id === assignment.section_id);
+      return section ? {
+        ...section,
+        assignmentId: assignment.ssi_id
+      } : null;
+    }).filter(Boolean);
+  };
 
   const handleOpenModal = (inst) => {
     navigate(`/mod-instructor-list/${inst.in_instructorid}`);
@@ -158,44 +244,6 @@ const InstructorList = () => {
     } else {
       navigate(`/mod-instructor-list/${instructorID}/${subjectId}`);
     }
-  };
-
-  const subjectsToShow = selectedInstructor && expandedSubjectId
-    ? ensureSubjectsArray(selectedInstructor.subjects).filter(s => s && String(s.sb_subid) === expandedSubjectId)
-    : ensureSubjectsArray(selectedInstructor?.subjects) || [];
-
-  // Get students by section
-  const getStudentsBySection = (course, year, section) => {
-    return students.filter(
-      (stud) =>
-        stud.st_course === course &&
-        stud.st_year === year &&
-        stud.st_section === section
-    ).sort((a, b) => a.st_lname.localeCompare(b.st_lname));
-  };
-
-  // Debug function to check section data
-  const debugSections = (instructorId, subject) => {
-    console.log("=== DEBUG SECTIONS ===");
-    console.log("Instructor ID:", instructorId);
-    console.log("Subject:", subject);
-    console.log("All sections:", sections);
-    
-    const relevantSections = sections.filter(section => {
-      const hasInstructor = arrayContains(section.section_ins_list, instructorId);
-      const sameYear = section.section_year === subject.sb_year;
-      console.log(`Section ${section.section_id}:`, {
-        section_ins_list: section.section_ins_list,
-        hasInstructor,
-        section_year: section.section_year,
-        subject_year: subject.sb_year,
-        sameYear
-      });
-      return hasInstructor && sameYear;
-    });
-    
-    console.log("Relevant sections:", relevantSections);
-    return relevantSections;
   };
 
   if (loading) {
@@ -257,6 +305,7 @@ const InstructorList = () => {
               <option value="All">All Courses</option>
               <option value="BSIT">BSIT</option>
               <option value="BSIS">BSIS</option>
+              <option value="BSCS">BSCS</option>
             </select>
             <select
               value={filterYear}
@@ -285,7 +334,7 @@ const InstructorList = () => {
         {/* Instructors Grid Section */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredInstructors.map((inst) => {
-            const subjects = ensureSubjectsArray(inst.subjects);
+            const subjects = inst.subjects || [];
             
             return (
               <div
@@ -295,9 +344,12 @@ const InstructorList = () => {
               >
                 <div className="flex items-center space-x-4">
                   <img
-                    src={inst.face || "/profiles/profile-default.png"}
+                    src={inst.face}
                     alt={`${inst.in_fname} ${inst.in_lname}`}
                     className="w-16 h-16 rounded-full object-cover border-2 border-gray-300"
+                    onError={(e) => {
+                      e.target.src = "/profiles/profile-default.png";
+                    }}
                   />
                   <div>
                     <p className="font-semibold text-lg">
@@ -305,11 +357,12 @@ const InstructorList = () => {
                       {inst.in_lname} {inst.in_suffix}
                     </p>
                     <p className="text-gray-500 text-sm">{inst.in_dept}</p>
+                    <p className="text-xs text-gray-400">ID: {inst.in_instructorid}</p>
                   </div>
                 </div>
                 <div className="mt-4 space-y-1">
                   {subjects.slice(0, 3).map((sub, index) => (
-                    <div key={index} className="text-sm text-gray-600">
+                    <div key={`${inst.in_instructorid}-${sub.sb_subid}-${index}`} className="text-sm text-gray-600">
                       {sub.sb_name} ({sub.sb_miscode}) - {sub.sb_course}
                     </div>
                   ))}
@@ -345,9 +398,12 @@ const InstructorList = () => {
               </button>
               <div className="flex items-center space-x-4 mb-6">
                 <img
-                  src={selectedInstructor.face || "/profiles/profile-default.png"}
+                  src={selectedInstructor.face}
                   alt={`${selectedInstructor.in_fname} ${selectedInstructor.in_lname}`}
                   className="w-20 h-20 rounded-full object-cover border-2 border-gray-300"
+                  onError={(e) => {
+                    e.target.src = "/profiles/profile-default.png";
+                  }}
                 />
                 <div>
                   <h2 className="text-2xl font-bold">
@@ -358,6 +414,7 @@ const InstructorList = () => {
                     {selectedInstructor.in_lname} {selectedInstructor.in_suffix}
                   </h2>
                   <p className="text-gray-600">{selectedInstructor.in_dept}</p>
+                  <p className="text-sm text-gray-500">ID: {selectedInstructor.in_instructorid}</p>
                 </div>
               </div>
 
@@ -378,24 +435,10 @@ const InstructorList = () => {
                 {subjectsToShow.map((sub) => {
                   if (!sub) return null;
                   
-                  // Find sections where this instructor teaches this subject
-                  const assignedSections = sections.filter(section => {
-                    const hasInstructor = arrayContains(section.section_ins_list, selectedInstructor.in_instructorid);
-                    const sameYear = section.section_year === sub.sb_year;
-                    
-                    // For debugging - uncomment the next line to see section matching in console
-                    // console.log(`Section ${section.section_id}: instructor ${selectedInstructor.in_instructorid} in ${section.section_ins_list}? ${hasInstructor}, year match? ${sameYear}`);
-                    
-                    return hasInstructor && sameYear;
-                  });
+                  const assignedSections = getAssignedSections(selectedInstructor.in_instructorid, sub);
 
                   const sectionsWithStudents = assignedSections.map((section) => {
-                    const studentsInSection = getStudentsBySection(
-                      sub.sb_course,
-                      section.section_year,
-                      section.section_name
-                    );
-
+                    const studentsInSection = getStudentsBySection(section.section_id);
                     return { ...section, students: studentsInSection };
                   });
 
@@ -403,11 +446,7 @@ const InstructorList = () => {
                     <div key={sub.sb_subid} className="bg-gray-50 rounded-md border">
                       <button
                         className="w-full text-left p-3 hover:bg-gray-100 transition flex justify-between items-center"
-                        onClick={() => {
-                          // Debug: check why sections might not be showing
-                          debugSections(selectedInstructor.in_instructorid, sub);
-                          handleSubjectToggle(String(sub.sb_subid));
-                        }}
+                        onClick={() => handleSubjectToggle(String(sub.sb_subid))}
                         disabled={!!expandedSubjectId}
                       >
                         <div>
@@ -421,7 +460,8 @@ const InstructorList = () => {
                             {semesterMap[sub.sb_semester]} - Year {sub.sb_year}
                           </p>
                           <p className="text-xs text-gray-500 mt-1">
-                            Sections: {assignedSections.length}
+                            Sections: {assignedSections.length} | 
+                            Students: {sectionsWithStudents.reduce((total, section) => total + section.students.length, 0)}
                           </p>
                         </div>
                         {!expandedSubjectId && (
@@ -439,8 +479,11 @@ const InstructorList = () => {
                               {sectionsWithStudents.map((section) => (
                                 <div key={section.section_id} className="mb-4 p-3 border rounded-lg bg-gray-50">
                                   <h4 className="font-semibold text-gray-800 mb-2">
-                                    Section: {sub.sb_course} {section.section_year}-{section.section_name}
+                                    Section: {section.sect_course} {section.sect_year_level}-{section.sect_name}
                                   </h4>
+                                  <p className="text-xs text-gray-500 mb-2">
+                                    School Year: {section.sect_school_year}
+                                  </p>
                                   {section.students.length > 0 ? (
                                     <div>
                                       <p className="text-sm text-gray-600 mb-2">
@@ -448,8 +491,8 @@ const InstructorList = () => {
                                       </p>
                                       <ul className="list-disc pl-5 space-y-1">
                                         {section.students.map((stud) => (
-                                          <li key={stud.st_studid} className="text-sm text-gray-700">
-                                            {stud.st_lname}, {stud.st_fname} ({stud.st_studid})
+                                          <li key={stud.stud_id} className="text-sm text-gray-700">
+                                            {stud.stud_lname}, {stud.stud_fname} ({stud.stud_id})
                                           </li>
                                         ))}
                                       </ul>
@@ -468,7 +511,7 @@ const InstructorList = () => {
                                 No sections assigned for this subject.
                               </p>
                               <p className="text-xs text-gray-400">
-                                Check that the instructor is in the section_ins_list and the section year matches the subject year.
+                                This instructor is not assigned to any sections for this subject.
                               </p>
                             </div>
                           )}

@@ -15,17 +15,49 @@ export default function ModeratorLogin() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
+    
+    // Basic validation
+    if (!username.trim() || !password.trim()) {
+      setMessage("❌ Please enter both username and password.");
+      return;
+    }
+
     setIsLoading(true);
+    setMessage("");
 
     try {
-      const res = await axios.post("/moderator_login", { username, password });
+      // ✅ CORRECTED: Use POST to /moderators/login (not /moderators/login)
+      const res = await axios.post("/moderators/login", { 
+        username: username.trim(), 
+        password: password.trim() 
+      });
 
-      sessionStorage.setItem("user", JSON.stringify(res.data.moderator));
-      sessionStorage.setItem("role", "moderator");
-      navigate("/mod-panel");
+      console.log("Login response:", res.data);
+      
+      if (res.data.moderator) {
+        sessionStorage.setItem("user", JSON.stringify(res.data.moderator));
+        sessionStorage.setItem("role", "moderator");
+        sessionStorage.setItem("token", "moderator-auth"); // Simple token for now
+        navigate("/mod-panel");
+      } else {
+        setMessage("❌ Invalid response from server");
+      }
     } catch (err) {
-      setMessage("❌ Invalid username or password.");
-      console.error(err);
+      console.error("Login error:", err);
+      if (err.response && err.response.data) {
+        // Handle different error response formats
+        if (err.response.data.error) {
+          setMessage(`❌ ${err.response.data.error}`);
+        } else if (err.response.data.message) {
+          setMessage(`❌ ${err.response.data.message}`);
+        } else {
+          setMessage("❌ Invalid username or password.");
+        }
+      } else if (err.code === 'ERR_NETWORK') {
+        setMessage("❌ Network error. Please check your connection.");
+      } else {
+        setMessage("❌ Invalid username or password.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -71,22 +103,24 @@ export default function ModeratorLogin() {
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="Enter your username"
                   type="text"
+                  required
                 />
                 <InputPassword
                   label="Password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
+                  required
                 />
               </div>
 
               <div className="mt-6 flex items-center gap-3">
                 <button
                   type="submit"
-                  className="flex-grow bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
-                  disabled={isLoading}
+                  className="flex-grow bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition disabled:bg-blue-300 disabled:cursor-not-allowed"
+                  disabled={isLoading || !username.trim() || !password.trim()}
                 >
-                  Login
+                  {isLoading ? "Logging in..." : "Login"}
                 </button>
                 {/* Student Login Icon */}
                 <div className="relative group">

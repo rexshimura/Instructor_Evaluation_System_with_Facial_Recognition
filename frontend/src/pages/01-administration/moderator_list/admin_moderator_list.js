@@ -56,33 +56,48 @@ export default function AdminModeratorList() {
         setError(null);
 
         // Fetch moderators
-        const moderatorsRes = await fetch("http://localhost:5000/moderators");
+        const moderatorsRes = await fetch("/moderators");
+        if (!moderatorsRes.ok) {
+          throw new Error(`Failed to fetch moderators: ${moderatorsRes.status}`);
+        }
         const moderatorsData = await moderatorsRes.json();
         
         if (moderatorsData.error) throw new Error(moderatorsData.error);
         setModerators(moderatorsData);
 
         // Fetch instructors for log details
-        const instructorsRes = await fetch("http://localhost:5000/instructor_list");
+        const instructorsRes = await fetch("/instructors");
+        if (!instructorsRes.ok) {
+          throw new Error(`Failed to fetch instructors: ${instructorsRes.status}`);
+        }
         const instructorsData = await instructorsRes.json();
         
         if (instructorsData.error) throw new Error(instructorsData.error);
         setInstructors(instructorsData);
 
-        // Fetch moderator logs
+        // Fetch logs with better error handling
         try {
-          const logsRes = await fetch("http://localhost:5000/moderator_logs");
+          const logsRes = await fetch("/logs");
+          if (!logsRes.ok) {
+            // If logs endpoint fails, set empty array and continue
+            console.warn("Logs endpoint returned error:", logsRes.status);
+            setLogs([]);
+            return;
+          }
           const logsData = await logsRes.json();
           
-          if (logsData.error && logsData.error !== "No logs found") {
-            console.warn("Error fetching logs:", logsData.error);
+          // Ensure logs is always an array
+          if (Array.isArray(logsData)) {
+            setLogs(logsData);
+          } else if (logsData && logsData.error) {
+            console.warn("Logs API returned error:", logsData.error);
             setLogs([]);
           } else {
-            setLogs(logsData.error ? [] : logsData);
+            setLogs([]);
           }
         } catch (logError) {
           console.warn("Could not fetch logs:", logError);
-          setLogs([]);
+          setLogs([]); // Set to empty array instead of undefined
         }
 
       } catch (err) {
@@ -95,6 +110,26 @@ export default function AdminModeratorList() {
 
     fetchData();
   }, []);
+
+  // Refresh data when modals close
+  useEffect(() => {
+    if (!isCreateModalOpen && !isEditModalOpen && !isDeleteModalOpen) {
+      const refreshData = async () => {
+        try {
+          const moderatorsRes = await fetch("/moderators");
+          if (moderatorsRes.ok) {
+            const moderatorsData = await moderatorsRes.json();
+            if (!moderatorsData.error) {
+              setModerators(moderatorsData);
+            }
+          }
+        } catch (err) {
+          console.error("Error refreshing data:", err);
+        }
+      };
+      refreshData();
+    }
+  }, [isCreateModalOpen, isEditModalOpen, isDeleteModalOpen]);
 
   useEffect(() => {
     // This effect syncs the selected moderator with the URL parameter
@@ -122,14 +157,14 @@ export default function AdminModeratorList() {
 
   const getFullName = (mod) => {
     if (!mod) return "";
-    const middleInitial = mod.mod_mname ? ` ${mod.mod_mname}.` : "";
+    const middleInitial = mod.mod_mname ? ` ${mod.mod_mname.charAt(0)}.` : "";
     return `${mod.mod_lname}, ${mod.mod_fname}${middleInitial}`;
   };
 
   // --- Logic for Logs & Admins ---
-  const moderatorLogs = selectedModerator
+  const moderatorLogs = selectedModerator && Array.isArray(logs)
     ? logs.filter((log) => log.mod_id === selectedModerator.mod_id)
-      .sort((a, b) => new Date(b.log_date_created) - new Date(a.log_date_created))
+        .sort((a, b) => new Date(b.log_date) - new Date(a.log_date))
     : [];
 
   // REFACTORED: Filtering logic for the activity logs
@@ -138,7 +173,7 @@ export default function AdminModeratorList() {
         return true;
       }
 
-      const logDate = new Date(log.log_date_created);
+      const logDate = new Date(log.log_date);
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
@@ -168,15 +203,20 @@ export default function AdminModeratorList() {
   });
 
   const getInstructorDetails = (instructorId) => {
+    if (!instructorId) {
+      return { id: "N/A", name: "No Instructor", dept: "N/A" };
+    }
+    
     const instructor = instructors.find(
-      (inst) => inst.in_instructorid === instructorId
+      (inst) => inst.ins_id === instructorId
     );
     if (!instructor) {
         return { id: instructorId, name: "Unknown Instructor", dept: "N/A" };
     }
-    const middleInitial = instructor.in_mname ? ` ${instructor.in_mname}.` : "";
-    const name = `${instructor.in_lname}, ${instructor.in_fname}${middleInitial}`;
-    return { id: instructor.in_instructorid, name: name, dept: instructor.in_dept };
+    const middleInitial = instructor.ins_mname ? ` ${instructor.ins_mname.charAt(0)}.` : "";
+    const suffix = instructor.ins_suffix ? ` ${instructor.ins_suffix}` : "";
+    const name = `${instructor.ins_lname}, ${instructor.ins_fname}${middleInitial}${suffix}`;
+    return { id: instructor.ins_id, name: name, dept: instructor.ins_dept };
   };
 
   // Since we don't have admin data, we'll use the created_by field as is
@@ -194,7 +234,7 @@ export default function AdminModeratorList() {
     try {
       setIsLoading(true);
       
-      const response = await fetch("http://localhost:5000/moderators", {
+      const response = await fetch("/moderators", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -202,20 +242,29 @@ export default function AdminModeratorList() {
         body: JSON.stringify(newModeratorData),
       });
 
-      const result = await response.json();
-
       if (!response.ok) {
-        throw new Error(result.error || "Failed to create moderator");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to create moderator");
       }
 
+      const result = await response.json();
+
       // Refresh moderators list
-      const moderatorsRes = await fetch("http://localhost:5000/moderators");
+      const moderatorsRes = await fetch("/moderators");
+      if (!moderatorsRes.ok) {
+        throw new Error("Failed to refresh moderators list");
+      }
       const moderatorsData = await moderatorsRes.json();
       
       if (moderatorsData.error) throw new Error(moderatorsData.error);
       
       setModerators(moderatorsData);
       setCreateModalOpen(false);
+      
+      // Select the newly created moderator
+      if (result.moderator) {
+        navigate(`/adm-moderator-list/${result.moderator.mod_id}`);
+      }
       
     } catch (err) {
       console.error("Error creating moderator:", err);
@@ -229,7 +278,6 @@ export default function AdminModeratorList() {
     if (selectedModerator) {
       setModeratorToEdit(selectedModerator);
       setEditModalOpen(true);
-      navigate(`/adm-moderator-list/${selectedModerator.mod_id}/edit`);
     }
   };
 
@@ -237,7 +285,7 @@ export default function AdminModeratorList() {
     try {
       setIsLoading(true);
       
-      const response = await fetch(`http://localhost:5000/moderators/${modId}`, {
+      const response = await fetch(`/moderators/${modId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -245,14 +293,18 @@ export default function AdminModeratorList() {
         body: JSON.stringify(updatedData),
       });
 
-      const result = await response.json();
-
       if (!response.ok) {
-        throw new Error(result.error || "Failed to update moderator");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to update moderator");
       }
 
+      const result = await response.json();
+
       // Refresh moderators list
-      const moderatorsRes = await fetch("http://localhost:5000/moderators");
+      const moderatorsRes = await fetch("/moderators");
+      if (!moderatorsRes.ok) {
+        throw new Error("Failed to refresh moderators list");
+      }
       const moderatorsData = await moderatorsRes.json();
       
       if (moderatorsData.error) throw new Error(moderatorsData.error);
@@ -260,7 +312,14 @@ export default function AdminModeratorList() {
       setModerators(moderatorsData);
       setEditModalOpen(false);
       setModeratorToEdit(null);
-      navigate(`/adm-moderator-list/${modId}`);
+      
+      // Update selected moderator if it's the one being edited
+      if (selectedModerator && selectedModerator.mod_id === modId) {
+        const updatedModerator = moderatorsData.find(m => m.mod_id === modId);
+        if (updatedModerator) {
+          setSelectedModerator(updatedModerator);
+        }
+      }
       
     } catch (err) {
       console.error("Error updating moderator:", err);
@@ -281,18 +340,22 @@ export default function AdminModeratorList() {
     try {
       setIsLoading(true);
       
-      const response = await fetch(`http://localhost:5000/moderators/${moderatorToDelete.mod_id}`, {
+      const response = await fetch(`/moderators/${moderatorToDelete.mod_id}`, {
         method: "DELETE",
       });
 
-      const result = await response.json();
-
       if (!response.ok) {
-        throw new Error(result.error || "Failed to delete moderator");
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to delete moderator");
       }
 
+      const result = await response.json();
+
       // Refresh moderators list
-      const moderatorsRes = await fetch("http://localhost:5000/moderators");
+      const moderatorsRes = await fetch("/moderators");
+      if (!moderatorsRes.ok) {
+        throw new Error("Failed to refresh moderators list");
+      }
       const moderatorsData = await moderatorsRes.json();
       
       if (moderatorsData.error) throw new Error(moderatorsData.error);
@@ -314,6 +377,16 @@ export default function AdminModeratorList() {
     setModeratorToDelete(null);
     setDeleteModalOpen(false);
   };
+
+  // Clear error after 5 seconds
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => {
+        setError(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
 
   if (isLoading && moderators.length === 0) {
     return (
@@ -353,6 +426,22 @@ export default function AdminModeratorList() {
   return (
     <div className="flex flex-col h-screen bg-gray-100">
       <AdminNavBar />
+      
+      {/* Error Banner */}
+      {error && (
+        <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded relative m-4">
+          <div className="flex justify-between items-center">
+            <span>{error}</span>
+            <button 
+              onClick={() => setError(null)}
+              className="text-red-700 hover:text-red-900"
+            >
+              &times;
+            </button>
+          </div>
+        </div>
+      )}
+      
       <main className="flex flex-1 overflow-hidden p-8">
         {/* Left Column: Moderator List */}
         <div className="w-1/3 bg-white border-r border-gray-200 flex flex-col rounded-l-xl shadow-lg">
@@ -388,12 +477,13 @@ export default function AdminModeratorList() {
                 >
                   <p className="font-semibold text-gray-800">{getFullName(mod)}</p>
                   <p className="text-sm text-gray-500">ID: {mod.mod_id}</p>
+                  <p className="text-xs text-gray-400">@{mod.mod_username}</p>
                 </button>
               </li>
             ))}
             {filteredModerators.length === 0 && (
               <li className="p-4 text-center text-gray-500">
-                No moderators found
+                {searchQuery ? "No moderators found matching your search" : "No moderators found"}
               </li>
             )}
           </ul>
@@ -411,62 +501,108 @@ export default function AdminModeratorList() {
                     <div>
                       <h3 className="text-3xl font-bold text-gray-900">{getFullName(selectedModerator)}</h3>
                       <p className="text-md text-gray-500">ID: {selectedModerator.mod_id}</p>
+                      <p className="text-sm text-gray-400">@{selectedModerator.mod_username}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <button onClick={handleEditAccount} className="flex items-center gap-2 bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-150">
-                        <FaUserEdit /> Edit Account
+                    <button 
+                      onClick={handleEditAccount} 
+                      className="flex items-center gap-2 bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-blue-700 transition duration-150"
+                    >
+                      <FaUserEdit /> Edit Account
                     </button>
-                    <button onClick={handleDeleteAccount} className="flex items-center gap-2 bg-red-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-700 transition duration-150">
+                    <button 
+                      onClick={handleDeleteAccount} 
+                      className="flex items-center gap-2 bg-red-600 text-white font-semibold py-2 px-4 rounded-lg hover:bg-red-700 transition duration-150"
+                    >
                       <FaTrash /> Delete Account
                     </button>
                   </div>
                 </div>
                 <div className="space-y-4 border-t pt-6">
-                  <div className="flex items-center gap-3"><FaAt className="text-gray-400" /><span className="font-semibold text-gray-700">Username:</span><span className="text-gray-900">{selectedModerator.mod_username}</span></div>
-                  <div className="flex items-center gap-3"><FaCalendarAlt className="text-gray-400" /><span className="font-semibold text-gray-700">Date Created:</span><span className="text-gray-900">{new Date(selectedModerator.date_created).toLocaleDateString()}</span></div>
-                  <div className="flex items-center gap-3"><FaIdBadge className="text-gray-400" /><span className="font-semibold text-gray-700">Created By:</span><span className="text-gray-900">{getAdminFullName(selectedModerator.created_by)}</span></div>
+                  <div className="flex items-center gap-3">
+                    <FaAt className="text-gray-400" />
+                    <span className="font-semibold text-gray-700">Username:</span>
+                    <span className="text-gray-900">{selectedModerator.mod_username}</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <FaCalendarAlt className="text-gray-400" />
+                    <span className="font-semibold text-gray-700">Date Created:</span>
+                    <span className="text-gray-900">
+                      {new Date(selectedModerator.date_created).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'long',
+                        day: 'numeric'
+                      })}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <FaIdBadge className="text-gray-400" />
+                    <span className="font-semibold text-gray-700">Created By:</span>
+                    <span className="text-gray-900">{getAdminFullName(selectedModerator.created_by)}</span>
+                  </div>
                 </div>
               </div>
 
               {/* Activity Logs Section */}
               <div className="mt-8 border-t pt-6 flex flex-col flex-grow min-h-0">
                 <div className="flex justify-between items-center mb-4">
-                    <h4 className="text-xl font-bold text-gray-800 flex items-center gap-3"><FaHistory className="text-purple-600" />Activity Logs</h4>
-                    <div className="flex items-center gap-2">
-                        <FaFilter className="text-gray-500" />
-                        <select
-                            value={filterRange}
-                            onChange={(e) => setFilterRange(e.target.value)}
-                            className="p-2 border rounded-md shadow-sm text-sm bg-white focus:ring-purple-500 focus:border-purple-500"
-                        >
-                            <option value="all">All Time</option>
-                            <option value="yesterday">Yesterday</option>
-                            <option value="last3days">Last 3 Days</option>
-                            <option value="lastWeek">Last Week</option>
-                        </select>
-                    </div>
+                  <h4 className="text-xl font-bold text-gray-800 flex items-center gap-3">
+                    <FaHistory className="text-purple-600" />
+                    Activity Logs ({moderatorLogs.length})
+                  </h4>
+                  <div className="flex items-center gap-2">
+                    <FaFilter className="text-gray-500" />
+                    <select
+                      value={filterRange}
+                      onChange={(e) => setFilterRange(e.target.value)}
+                      className="p-2 border rounded-md shadow-sm text-sm bg-white focus:ring-purple-500 focus:border-purple-500"
+                    >
+                      <option value="all">All Time</option>
+                      <option value="yesterday">Yesterday</option>
+                      <option value="last3days">Last 3 Days</option>
+                      <option value="lastWeek">Last Week</option>
+                    </select>
+                  </div>
                 </div>
                 <div className="flex-grow overflow-y-auto pr-2">
                   {filteredLogs.length > 0 ? (
                     <ul className="space-y-4">
                       {filteredLogs.map((log) => {
                         const instructor = getInstructorDetails(log.ins_id);
-                        const logDate = new Date(log.log_date_created);
+                        const logDate = new Date(log.log_date);
                         return (
                           <li key={log.log_id} className="p-4 bg-gray-50 rounded-lg shadow-sm border border-gray-200">
                             <div className="flex justify-between items-start">
-                                <div className="flex-1">
-                                    <p className="font-bold text-purple-700 text-md">{log.log_action}</p>
-                                    <div className="mt-2 text-sm text-gray-600 space-y-1">
-                                        <p className="flex items-center gap-2"><FaUserTie className="text-gray-400"/><span>{instructor.name}</span></p>
-                                        <p className="flex items-center gap-2"><FaInfoCircle className="text-gray-400"/><span>{instructor.id} &middot; <span className="font-semibold">{instructor.dept}</span></span></p>
-                                    </div>
+                              <div className="flex-1">
+                                <p className="font-bold text-purple-700 text-md">{log.log_action}</p>
+                                <div className="mt-2 text-sm text-gray-600 space-y-1">
+                                  <p className="flex items-center gap-2">
+                                    <FaUserTie className="text-gray-400"/>
+                                    <span>{instructor.name}</span>
+                                  </p>
+                                  <p className="flex items-center gap-2">
+                                    <FaInfoCircle className="text-gray-400"/>
+                                    <span>{instructor.id} &middot; <span className="font-semibold">{instructor.dept}</span></span>
+                                  </p>
                                 </div>
-                                <div className="text-xs text-gray-500 text-right flex flex-col items-end gap-1">
-                                    <span className="font-semibold">{logDate.toLocaleDateString()}</span>
-                                    <span className="flex items-center gap-1"><FaRegClock />{logDate.toLocaleTimeString()}</span>
-                                </div>
+                              </div>
+                              <div className="text-xs text-gray-500 text-right flex flex-col items-end gap-1">
+                                <span className="font-semibold">
+                                  {logDate.toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric'
+                                  })}
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <FaRegClock />
+                                  {logDate.toLocaleTimeString('en-US', {
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}
+                                </span>
+                              </div>
                             </div>
                           </li>
                         );
@@ -474,10 +610,15 @@ export default function AdminModeratorList() {
                     </ul>
                   ) : (
                     <div className="h-full flex items-center justify-center text-center text-gray-500">
-                        <div>
-                            <FaFilter className="text-4xl text-gray-300 mx-auto mb-2"/>
-                            <p>No activity logs found for the selected filter.</p>
-                        </div>
+                      <div>
+                        <FaFilter className="text-4xl text-gray-300 mx-auto mb-2"/>
+                        <p>No activity logs found for the selected filter.</p>
+                        {moderatorLogs.length > 0 && (
+                          <p className="text-sm mt-1">
+                            {moderatorLogs.length} logs available for other time periods
+                          </p>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -507,10 +648,8 @@ export default function AdminModeratorList() {
       <EditModerator
         isOpen={isEditModalOpen}
         onClose={() => {
-            setEditModalOpen(false);
-            if (selectedModerator) {
-                navigate(`/adm-moderator-list/${selectedModerator.mod_id}`);
-            }
+          setEditModalOpen(false);
+          setModeratorToEdit(null);
         }}
         onSubmit={handleEditModeratorSubmit}
         isLoading={isLoading}
@@ -519,23 +658,31 @@ export default function AdminModeratorList() {
 
       {/* Delete Confirmation Modal */}
       {isDeleteModalOpen && (
-         <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
-           <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full">
-             <h3 className="text-lg font-bold text-gray-800">Confirm Deletion</h3>
-             <p className="mt-2 text-sm text-gray-600">
-               Are you sure you want to delete the account for <span className="font-semibold">{getFullName(moderatorToDelete)}</span>? This action cannot be undone.
-             </p>
-             <div className="mt-6 flex justify-end gap-3">
-               <button onClick={cancelDelete} className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300">
-                 Cancel
-               </button>
-               <button onClick={confirmDelete} disabled={isLoading} className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 flex items-center gap-2 disabled:bg-red-400">
-                 {isLoading && <FaSpinner className="animate-spin" />}
-                 Confirm
-               </button>
-             </div>
-           </div>
-         </div>
+        <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
+          <div className="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full">
+            <h3 className="text-lg font-bold text-gray-800">Confirm Deletion</h3>
+            <p className="mt-2 text-sm text-gray-600">
+              Are you sure you want to delete the account for <span className="font-semibold">{getFullName(moderatorToDelete)}</span>? This action cannot be undone.
+            </p>
+            <div className="mt-6 flex justify-end gap-3">
+              <button 
+                onClick={cancelDelete} 
+                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300"
+                disabled={isLoading}
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={confirmDelete} 
+                disabled={isLoading} 
+                className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 flex items-center gap-2 disabled:bg-red-400"
+              >
+                {isLoading && <FaSpinner className="animate-spin" />}
+                Confirm
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

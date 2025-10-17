@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { FaTimes, FaSpinner, FaExclamationTriangle } from "react-icons/fa";
+import { FaTimes, FaSpinner, FaExclamationTriangle, FaEye, FaEyeSlash } from "react-icons/fa";
 
 export default function EditModerator({ isOpen, onClose, onSubmit, isLoading, moderatorData }) {
   const initialFormState = {
@@ -13,6 +13,8 @@ export default function EditModerator({ isOpen, onClose, onSubmit, isLoading, mo
   const [formData, setFormData] = useState(initialFormState);
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [touched, setTouched] = useState({});
 
   useEffect(() => {
     if (isOpen && moderatorData) {
@@ -26,20 +28,36 @@ export default function EditModerator({ isOpen, onClose, onSubmit, isLoading, mo
       });
       setErrors({});
       setApiError("");
+      setTouched({});
+      setShowPassword(false);
     } else if (!isOpen) {
       setFormData(initialFormState);
       setApiError("");
+      setTouched({});
     }
   }, [isOpen, moderatorData]);
 
   const handleClose = () => {
-    setApiError("");
-    onClose();
+    if (!isLoading) {
+      setApiError("");
+      onClose();
+    }
+  };
+
+  const handleBlur = (e) => {
+    const { name } = e.target;
+    setTouched(prev => ({ ...prev, [name]: true }));
+    validateField(name, formData[name]);
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Real-time validation for touched fields
+    if (touched[name]) {
+      validateField(name, value);
+    }
     
     if (errors[name]) {
       setErrors(prev => ({ ...prev, [name]: null }));
@@ -50,34 +68,102 @@ export default function EditModerator({ isOpen, onClose, onSubmit, isLoading, mo
     }
   };
 
-  const validateForm = () => {
-    const newErrors = {};
-    if (!formData.mod_fname.trim()) newErrors.mod_fname = "First name is required.";
-    if (!formData.mod_lname.trim()) newErrors.mod_lname = "Last name is required.";
-    if (!formData.mod_username.trim()) newErrors.mod_username = "Username is required.";
-    if (formData.mod_username.length < 4) newErrors.mod_username = "Username must be at least 4 characters.";
+  const validateField = (name, value) => {
+    let error = "";
 
-    // Only validate the password if a new one is entered
-    if (formData.mod_password && formData.mod_password.length < 6) {
-      newErrors.mod_password = "Password must be at least 6 characters.";
+    switch (name) {
+      case "mod_fname":
+        if (!value.trim()) {
+          error = "First name is required.";
+        } else if (!/^[a-zA-Z\s]+$/.test(value)) {
+          error = "First name can only contain letters and spaces.";
+        } else if (value.trim().length < 2) {
+          error = "First name must be at least 2 characters.";
+        }
+        break;
+
+      case "mod_mname":
+        if (value.trim() && !/^[a-zA-Z\s]*$/.test(value)) {
+          error = "Middle name can only contain letters and spaces.";
+        }
+        break;
+
+      case "mod_lname":
+        if (!value.trim()) {
+          error = "Last name is required.";
+        } else if (!/^[a-zA-Z\s]+$/.test(value)) {
+          error = "Last name can only contain letters and spaces.";
+        } else if (value.trim().length < 2) {
+          error = "Last name must be at least 2 characters.";
+        }
+        break;
+
+      case "mod_username":
+        if (!value.trim()) {
+          error = "Username is required.";
+        } else if (value.length < 4) {
+          error = "Username must be at least 4 characters.";
+        } else if (!/^[a-zA-Z0-9_]+$/.test(value)) {
+          error = "Username can only contain letters, numbers, and underscores.";
+        }
+        break;
+
+      case "mod_password":
+        if (value && value.length < 6) {
+          error = "Password must be at least 6 characters.";
+        } else if (value.length > 50) {
+          error = "Password cannot exceed 50 characters.";
+        }
+        break;
+
+      default:
+        break;
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    setErrors(prev => ({ ...prev, [name]: error }));
+    return !error;
+  };
+
+  const validateForm = () => {
+    const fieldsToValidate = ["mod_fname", "mod_lname", "mod_username"];
+    let isValid = true;
+    const newTouched = {};
+
+    fieldsToValidate.forEach(field => {
+      newTouched[field] = true;
+      if (!validateField(field, formData[field])) {
+        isValid = false;
+      }
+    });
+
+    // Validate password only if it's not empty
+    if (formData.mod_password.trim()) {
+      newTouched.mod_password = true;
+      if (!validateField("mod_password", formData.mod_password)) {
+        isValid = false;
+      }
+    }
+
+    setTouched(newTouched);
+    return isValid;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (validateForm()) {
       try {
-        const dataToSubmit = { ...formData };
+        const dataToSubmit = {
+          mod_fname: formData.mod_fname.trim(),
+          mod_mname: formData.mod_mname.trim() || "",
+          mod_lname: formData.mod_lname.trim(),
+          mod_username: formData.mod_username.trim(),
+        };
         
-        // Remove password field if it's empty (so backend keeps current password)
-        if (!dataToSubmit.mod_password.trim()) {
-          delete dataToSubmit.mod_password;
+        // Only include password if it's not empty
+        if (formData.mod_password.trim()) {
+          dataToSubmit.mod_password = formData.mod_password;
         }
         
-        // Use mod_id from moderatorData (backend field name)
         await onSubmit(moderatorData.mod_id, dataToSubmit);
       } catch (error) {
         setApiError(error.message || "Failed to update moderator");
@@ -85,12 +171,29 @@ export default function EditModerator({ isOpen, onClose, onSubmit, isLoading, mo
     }
   };
 
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
+
+  // Check if form has any errors in required fields
+  const hasRequiredErrors = 
+    errors.mod_fname || 
+    errors.mod_lname || 
+    errors.mod_username;
+
+  // Check if required fields are filled and valid
+  const isFormValid = 
+    formData.mod_fname.trim() && 
+    formData.mod_lname.trim() && 
+    formData.mod_username.trim() &&
+    !hasRequiredErrors;
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-white p-8 rounded-xl shadow-2xl max-w-md w-full m-4 animate-fade-in-up">
-        <div className="flex justify-between items-center mb-6">
+    <div className="fixed inset-0 bg-black bg-opacity-50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+      <div className="bg-white p-6 rounded-xl shadow-2xl max-w-md w-full animate-fade-in-up max-h-[90vh] overflow-y-auto">
+        <div className="flex justify-between items-center mb-4">
           <h2 className="text-2xl font-bold text-gray-800">Edit Moderator Account</h2>
           <button 
             onClick={handleClose} 
@@ -119,9 +222,10 @@ export default function EditModerator({ isOpen, onClose, onSubmit, isLoading, mo
         )}
 
         <form onSubmit={handleSubmit} noValidate>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="md:col-span-2">
-              <label htmlFor="mod_username" className="block text-sm font-medium text-gray-700">
+          <div className="space-y-4">
+            {/* Username - Read Only */}
+            <div>
+              <label htmlFor="mod_username" className="block text-sm font-medium text-gray-700 mb-1">
                 Username <span className="text-red-500">*</span>
               </label>
               <input 
@@ -129,104 +233,162 @@ export default function EditModerator({ isOpen, onClose, onSubmit, isLoading, mo
                 name="mod_username" 
                 id="mod_username" 
                 value={formData.mod_username} 
-                onChange={handleChange} 
+                onChange={handleChange}
+                onBlur={handleBlur}
                 disabled={true}
-                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm bg-gray-100 text-gray-500 cursor-not-allowed"
+                className="w-full p-3 border border-gray-300 rounded-lg bg-gray-100 text-gray-600 cursor-not-allowed"
                 title="Username cannot be changed"
               />
-              <p className="text-gray-500 text-xs mt-1">Username cannot be changed</p>
+              <p className="text-gray-500 text-xs mt-1">Username cannot be changed for security reasons</p>
             </div>
-            
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* First Name */}
+              <div className="md:col-span-1">
+                <label htmlFor="mod_fname" className="block text-sm font-medium text-gray-700 mb-1">
+                  First Name <span className="text-red-500">*</span>
+                </label>
+                <input 
+                  type="text" 
+                  name="mod_fname" 
+                  id="mod_fname" 
+                  value={formData.mod_fname} 
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors ${
+                    errors.mod_fname ? 'border-red-500 bg-red-50' : touched.mod_fname ? 'border-blue-300' : 'border-gray-300'
+                  }`}
+                  placeholder="First name"
+                  maxLength={50}
+                  disabled={isLoading}
+                />
+                {errors.mod_fname && (
+                  <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                    <span>⚠</span> {errors.mod_fname}
+                  </p>
+                )}
+              </div>
+
+              {/* Middle Name */}
+              <div className="md:col-span-1">
+                <label htmlFor="mod_mname" className="block text-sm font-medium text-gray-700 mb-1">
+                  Middle Name
+                </label>
+                <input 
+                  type="text" 
+                  name="mod_mname" 
+                  id="mod_mname" 
+                  value={formData.mod_mname} 
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors ${
+                    errors.mod_mname ? 'border-red-500 bg-red-50' : 'border-gray-300'
+                  }`}
+                  placeholder="Middle"
+                  maxLength={50}
+                  disabled={isLoading}
+                />
+                {errors.mod_mname && (
+                  <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                    <span>⚠</span> {errors.mod_mname}
+                  </p>
+                )}
+              </div>
+
+              {/* Last Name */}
+              <div className="md:col-span-1">
+                <label htmlFor="mod_lname" className="block text-sm font-medium text-gray-700 mb-1">
+                  Last Name <span className="text-red-500">*</span>
+                </label>
+                <input 
+                  type="text" 
+                  name="mod_lname" 
+                  id="mod_lname" 
+                  value={formData.mod_lname} 
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={`w-full p-3 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors ${
+                    errors.mod_lname ? 'border-red-500 bg-red-50' : touched.mod_lname ? 'border-blue-300' : 'border-gray-300'
+                  }`}
+                  placeholder="Last name"
+                  maxLength={50}
+                  disabled={isLoading}
+                />
+                {errors.mod_lname && (
+                  <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                    <span>⚠</span> {errors.mod_lname}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Password */}
             <div>
-              <label htmlFor="mod_fname" className="block text-sm font-medium text-gray-700">
-                First Name <span className="text-red-500">*</span>
-              </label>
-              <input 
-                type="text" 
-                name="mod_fname" 
-                id="mod_fname" 
-                value={formData.mod_fname} 
-                onChange={handleChange} 
-                className={`mt-1 block w-full p-2 border rounded-md shadow-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 ${
-                  errors.mod_fname ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="Enter first name"
-              />
-              {errors.mod_fname && <p className="text-red-500 text-xs mt-1">{errors.mod_fname}</p>}
-            </div>
-            
-            <div>
-              <label htmlFor="mod_mname" className="block text-sm font-medium text-gray-700">
-                Middle Name (Optional)
-              </label>
-              <input 
-                type="text" 
-                name="mod_mname" 
-                id="mod_mname" 
-                value={formData.mod_mname} 
-                onChange={handleChange} 
-                className="mt-1 block w-full p-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
-                placeholder="Enter middle name"
-              />
-            </div>
-            
-            <div className="md:col-span-2">
-              <label htmlFor="mod_lname" className="block text-sm font-medium text-gray-700">
-                Last Name <span className="text-red-500">*</span>
-              </label>
-              <input 
-                type="text" 
-                name="mod_lname" 
-                id="mod_lname" 
-                value={formData.mod_lname} 
-                onChange={handleChange} 
-                className={`mt-1 block w-full p-2 border rounded-md shadow-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 ${
-                  errors.mod_lname ? 'border-red-500' : 'border-gray-300'
-                }`}
-                placeholder="Enter last name"
-              />
-              {errors.mod_lname && <p className="text-red-500 text-xs mt-1">{errors.mod_lname}</p>}
-            </div>
-            
-            <div className="md:col-span-2">
-              <label htmlFor="mod_password" className="block text-sm font-medium text-gray-700">
+              <label htmlFor="mod_password" className="block text-sm font-medium text-gray-700 mb-1">
                 New Password
                 <span className="text-gray-500 text-xs ml-1 font-normal">
                   (Leave blank to keep current password)
                 </span>
               </label>
-              <input 
-                type="password" 
-                name="mod_password" 
-                id="mod_password" 
-                placeholder="Enter new password to change"
-                value={formData.mod_password} 
-                onChange={handleChange} 
-                className={`mt-1 block w-full p-2 border rounded-md shadow-sm focus:ring-2 focus:ring-purple-500 focus:border-purple-500 ${
-                  errors.mod_password ? 'border-red-500' : 'border-gray-300'
-                }`}
-              />
-              {errors.mod_password && <p className="text-red-500 text-xs mt-1">{errors.mod_password}</p>}
-              <p className="text-gray-500 text-xs mt-1">Minimum 6 characters if changing password</p>
+              <div className="relative">
+                <input 
+                  type={showPassword ? "text" : "password"} 
+                  name="mod_password" 
+                  id="mod_password" 
+                  placeholder="Enter new password to change"
+                  value={formData.mod_password} 
+                  onChange={handleChange}
+                  onBlur={handleBlur}
+                  className={`w-full p-3 pr-10 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500 transition-colors ${
+                    errors.mod_password ? 'border-red-500 bg-red-50' : touched.mod_password ? 'border-blue-300' : 'border-gray-300'
+                  }`}
+                  maxLength={50}
+                  disabled={isLoading}
+                />
+                <button
+                  type="button"
+                  onClick={togglePasswordVisibility}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 disabled:text-gray-300"
+                  disabled={isLoading}
+                >
+                  {showPassword ? <FaEyeSlash size={16} /> : <FaEye size={16} />}
+                </button>
+              </div>
+              {errors.mod_password && (
+                <p className="text-red-500 text-xs mt-1 flex items-center gap-1">
+                  <span>⚠</span> {errors.mod_password}
+                </p>
+              )}
+              <p className="text-gray-500 text-xs mt-1">
+                Minimum 6 characters if changing password
+              </p>
             </div>
           </div>
           
-          <div className="mt-8 flex justify-end gap-3">
+          {/* Form Status */}
+          <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+            <p className="text-xs text-gray-600">
+              <strong>Form Status:</strong> {isFormValid ? "✅ Ready to submit" : "❌ Please fill all required fields correctly"}
+            </p>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="mt-6 flex justify-end gap-3 pt-4 border-t border-gray-200">
             <button 
               type="button" 
               onClick={handleClose} 
               disabled={isLoading}
-              className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 transition-colors disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
+              className="px-6 py-2.5 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition-colors disabled:bg-gray-100 disabled:text-gray-400 font-medium"
             >
               Cancel
             </button>
             <button 
               type="submit" 
-              disabled={isLoading}
-              className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 flex items-center gap-2 disabled:bg-purple-400 disabled:cursor-not-allowed transition-colors"
+              disabled={isLoading || !isFormValid}
+              className="px-6 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2 disabled:bg-purple-400 disabled:cursor-not-allowed transition-colors font-medium"
             >
               {isLoading && <FaSpinner className="animate-spin" />}
-              Update Account
+              {isLoading ? "Updating..." : "Update Account"}
             </button>
           </div>
         </form>
