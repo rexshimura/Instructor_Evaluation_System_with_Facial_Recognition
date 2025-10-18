@@ -41,6 +41,7 @@ INSTALLED_APPS = [
 
     # SEPARATED
     'base.apps.BaseConfig',
+    'api.apps.ApiConfig',
 ]
 
 MIDDLEWARE = [
