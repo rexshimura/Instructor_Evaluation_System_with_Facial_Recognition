@@ -117,7 +117,7 @@ export default function ModeratorPanel() {
               </a>
 
               {/* Card 3: Register Face */}
-              <a href="/mod-record-face" className="block p-4 border border-gray-200 rounded-lg hover:bg-indigo-50 transition duration-150 group">
+              <a href="/instructor-face-selection" className="block p-4 border border-gray-200 rounded-lg hover:bg-indigo-50 transition duration-150 group">
                 <h3 className="text-lg font-semibold text-indigo-700 group-hover:text-indigo-900">Register Face</h3>
                 <p className="text-sm text-gray-500">Capture and register facial recognition data for new instructors.</p>
               </a>

@@ -770,7 +770,8 @@ export default function AdminStatistics() {
               options={[
                 { id: 'All', name: 'All Courses' }, 
                 { id: 'BSIT', name: 'BSIT' }, 
-                { id: 'BSIS', name: 'BSIS' }
+                { id: 'BSIS', name: 'BSIS' },
+                { id: 'BSCS', name: 'BSCS' }
               ]} 
             />
             <FilterDropdown 
