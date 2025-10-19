@@ -1,5 +1,5 @@
 import React from "react";
- import { Routes, Route } from "react-router-dom";
+import { Routes, Route } from "react-router-dom";
 
 import Landing from "./pages/Landing";
 
@@ -20,11 +20,16 @@ import ModeratorPanel from "./pages/02-moderator/moderator_panel";
 import RegisterForm from "./pages/02-moderator/register_instructor/register_form";
 import FaceRecord from "./pages/02-moderator/register_instructor/register_face";
 import InstructorList from "./pages/02-moderator/instructor_list/instructor_list";
+import StudentList from "./pages/02-moderator/student_list/student_list";
+import SectionList from "./pages/02-moderator/section_list/section_list";
+import InstructorSections from "./pages/02-moderator/instructor_sections/instructor_sections";
 
 // STUDENT ROUTES
 import Home from "./pages/03-student/Home";
 import StudentInstructorList from "./pages/03-student/Evaluate";
 import EvaluationForm from "./pages/03-student/EvaluationForm";
+import History from "./pages/03-student/history"
+import Guidelines from "./pages/03-student/guidelines"
 
 // ERROR HANDLERS
 import ProtectedRoute from "./token/ProtectedRoute";
@@ -39,32 +44,39 @@ import InstructorFaceRec from "./pages/05-instructor/InstructorFaceRec";
 function App() {
   return (
 
-      <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/stud-login" element={<StudentLogin />} />
-        <Route path="/modr-login" element={<ModeratorLogin />} />
-        <Route path="/admn-login" element={<AdminLogin />} />
-        <Route path="/verify-instructor" element={<InstructorFaceRec />} />
-        <Route path="/instructor-profile/:instructorID" element={<InstructorProfile />} />
+    <Routes>
+      <Route path="/" element={<Landing />} />
+      <Route path="/stud-login" element={<StudentLogin />} />
+      <Route path="/modr-login" element={<ModeratorLogin />} />
+      <Route path="/admn-login" element={<AdminLogin />} />
+      <Route path="/verify-instructor" element={<InstructorFaceRec />} />
+      <Route path="/instructor-profile/:instructorID" element={<InstructorProfile />} />
 
-        <Route element={<ProtectedRoute requiredRole="student" />}>
-          <Route path="/home" element={<Home />} />
-          <Route path="/instructor-list" element={<StudentInstructorList />} />
-          <Route path="/instructor-evaluation/:instructorID/:subjectID" element={<EvaluationForm/>} />
-        </Route>
+      <Route element={<ProtectedRoute requiredRole="student" />}>
+        <Route path="/home" element={<Home />} />
+        <Route path="/instructor-list" element={<StudentInstructorList />} />
+        <Route path="/instructor-evaluation/:instructorID/:subjectID" element={<EvaluationForm />} />
+        <Route path="/student-history" element={<History />} />
+        <Route path="/guidelines" element={<Guidelines />} />
 
-        <Route element={<ProtectedRoute requiredRole="moderator" />}>
-          <Route path="/mod-panel" element={<ModeratorPanel />} />
-          <Route path="/mod-register-instructor" element={<RegisterForm />} />
-          <Route path="/mod-record-face" element={<FaceRecord />} />
-          <Route path="/mod-record-face/:instructorID" element={<FaceRecord />} />
+      </Route>
 
-          <Route path="/mod-instructor-list" element={<InstructorList />} />
-          <Route path="/mod-instructor-list/:instructorID" element={<InstructorList />} />
-          <Route path="/mod-instructor-list/:instructorID/:subjectID" element={<InstructorList />} />
-        </Route>
+      <Route element={<ProtectedRoute requiredRole="moderator" />}>
+        <Route path="/mod-panel" element={<ModeratorPanel />} />
+        <Route path="/mod-register-instructor" element={<RegisterForm />} />
+        <Route path="/mod-record-face" element={<FaceRecord />} />
+        <Route path="/mod-record-face/:instructorID" element={<FaceRecord />} />
 
-         <Route element={<ProtectedRoute requiredRole="admin" />}>
+        <Route path="/mod-instructor-list" element={<InstructorList />} />
+        <Route path="/mod-instructor-list/:instructorID" element={<InstructorList />} />
+        <Route path="/mod-instructor-list/:instructorID/:subjectID" element={<InstructorList />} />
+
+        <Route path="/mod-student-list" element={<StudentList />} />
+        <Route path="/mod-section-list" element={<SectionList />} />
+        <Route path="/mod-instructor-sections" element={<InstructorSections />} />
+      </Route>
+
+      <Route element={<ProtectedRoute requiredRole="admin" />}>
         <Route path="/adm-panel" element={<AdminPanel />} />
         <Route path="/adm-instructor-list" element={<AdminInstructorList />} />
         <Route path="/adm-instructor-list/:instructorID" element={<AdminInstructorList />} />
@@ -77,11 +89,11 @@ function App() {
         <Route path="/adm-curriculum" element={<AdminCurriculum />} />
         <Route path="/adm-curriculum/:subjectId/edit" element={<AdminCurriculum />} />
         <Route path="/adm-statistics" element={<AdminStatistics />} />
-        </Route>
+      </Route>
 
       <Route path="/oops" element={<LoginBlock />} />
       <Route path="*" element={<NotFound />} />
-      </Routes>
+    </Routes>
 
   );
 }

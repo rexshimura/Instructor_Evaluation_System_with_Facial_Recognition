@@ -59,32 +59,32 @@ const InputDateOfBirth = ({ value, onChange, required, name }) => {
   );
 };
 
-// API base URL
-const API_BASE = "http://localhost:5000";
-
 const InstructorForm = () => {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [subjects, setSubjects] = useState([]);
   const [error, setError] = useState('');
   const [currentModerator, setCurrentModerator] = useState(null);
-  const [debugInfo, setDebugInfo] = useState('');
 
   const [formData, setFormData] = useState({
     personalInfo: {
-      fname: '',
-      mname: '',
-      lname: '',
-      suffix: '',
-      dob: '',
-      sex: '',
+      ins_fname: '',
+      ins_mname: '',
+      ins_lname: '',
+      ins_suffix: '',
+      ins_dob: '',
+      ins_sex: '',
     },
     contactDetails: {
-      email: '',
-      contactnum: '',
+      ins_email: '',
+      ins_contact: '',
+    },
+    department: {
+      ins_dept: '',
     },
     subjectLoad: [
       {
+        sub_id: '',
         subjectName: '',
         course: '',
         miscode: '',
@@ -101,7 +101,7 @@ const InstructorForm = () => {
   useEffect(() => {
     const fetchSubjects = async () => {
       try {
-        const response = await fetch(`${API_BASE}/subject_list`);
+        const response = await fetch('/subjects');
         if (response.ok) {
           const data = await response.json();
           setSubjects(data);
@@ -114,7 +114,7 @@ const InstructorForm = () => {
       }
     };
 
-    // Get current moderator from sessionStorage - FIXED: using sessionStorage instead of localStorage
+    // Get current moderator from sessionStorage
     const userData = sessionStorage.getItem('user');
     console.log('Raw user data from sessionStorage:', userData);
 
@@ -142,7 +142,15 @@ const InstructorForm = () => {
     fetchSubjects();
   }, []);
 
-   const handleChange = (e, fieldSet, index) => {
+  // Filter subjects by selected department
+  const getAvailableSubjects = () => {
+    if (!formData.department.ins_dept) {
+      return [];
+    }
+    return subjects.filter(subject => subject.sub_course === formData.department.ins_dept);
+  };
+
+  const handleChange = (e, fieldSet, index) => {
     const { name, value } = e.target;
     
     if (fieldSet === 'subjectLoad') {
@@ -153,44 +161,75 @@ const InstructorForm = () => {
       newSubjectLoad[index].isConfirmed = false;
       newSubjectLoad[index].validationError = '';
       
-      if (name === 'subjectName' || name === 'course' || name === 'year' || name === 'semester') {
+      if (name === 'subjectName') {
         const selectedSubject = subjects.find(
-          (subject) =>
-            subject.sb_name === newSubjectLoad[index].subjectName &&
-            subject.sb_course === newSubjectLoad[index].course &&
-            subject.sb_year === parseInt(newSubjectLoad[index].year, 10) &&
-            subject.sb_semester === parseInt(newSubjectLoad[index].semester, 10)
+          (subject) => subject.sub_name === value
         );
         
         if (selectedSubject) {
-          newSubjectLoad[index].subjectId = selectedSubject.sb_subid; // Store subject ID
-          newSubjectLoad[index].miscode = selectedSubject.sb_miscode;
-          newSubjectLoad[index].units = selectedSubject.sb_units.toString();
+          newSubjectLoad[index].sub_id = selectedSubject.sub_id;
+          newSubjectLoad[index].miscode = selectedSubject.sub_miscode;
+          newSubjectLoad[index].units = selectedSubject.sub_units.toString();
+          newSubjectLoad[index].course = selectedSubject.sub_course;
+          newSubjectLoad[index].year = selectedSubject.sub_year.toString();
+          newSubjectLoad[index].semester = selectedSubject.sub_semester.toString();
         } else {
-          newSubjectLoad[index].subjectId = '';
+          // Reset fields if subject is deselected
+          newSubjectLoad[index].sub_id = '';
           newSubjectLoad[index].miscode = '';
           newSubjectLoad[index].units = '';
+          newSubjectLoad[index].course = '';
+          newSubjectLoad[index].year = '';
+          newSubjectLoad[index].semester = '';
         }
       }
       setFormData({ ...formData, subjectLoad: newSubjectLoad });
     } else {
-      setFormData(prevData => ({
-        ...prevData,
+      const newFormData = {
+        ...formData,
         [fieldSet]: {
-          ...prevData[fieldSet],
+          ...formData[fieldSet],
           [name]: value,
         },
-      }));
+      };
+
+      // If department changed, clear all subject selections
+      if (fieldSet === 'department' && name === 'ins_dept') {
+        newFormData.subjectLoad = newFormData.subjectLoad.map(subject => ({
+          ...subject,
+          sub_id: '',
+          subjectName: '',
+          course: '',
+          miscode: '',
+          units: '',
+          semester: '',
+          year: '',
+          isConfirmed: false,
+          validationError: '',
+        }));
+      }
+
+      setFormData(newFormData);
     }
   };
 
- const addSubject = () => {
+  const addSubject = () => {
+    // Check if there are available subjects to add
+    const availableSubjects = getAvailableSubjects();
+    const usedSubjectIds = formData.subjectLoad.map(subject => subject.sub_id).filter(Boolean);
+    const availableSlots = availableSubjects.filter(subject => !usedSubjectIds.includes(subject.sub_id));
+    
+    if (availableSlots.length === 0) {
+      setError("No more available subjects to add for this department.");
+      return;
+    }
+
     setFormData(prevData => ({
       ...prevData,
       subjectLoad: [
         ...prevData.subjectLoad,
         {
-          subjectId: '', // Add subjectId field
+          sub_id: '',
           subjectName: '',
           course: '',
           miscode: '',
@@ -202,6 +241,7 @@ const InstructorForm = () => {
         },
       ],
     }));
+    setError(''); // Clear any previous errors
   };
 
   const removeSubject = (index) => {
@@ -211,6 +251,7 @@ const InstructorForm = () => {
     }
     const newSubjectLoad = formData.subjectLoad.filter((_, i) => i !== index);
     setFormData({ ...formData, subjectLoad: newSubjectLoad });
+    setError(''); // Clear any previous errors
   };
 
   const confirmSubject = (index) => {
@@ -218,8 +259,27 @@ const InstructorForm = () => {
     const newSubjectLoad = [...formData.subjectLoad];
 
     // Check if all required fields are filled
-    if (!subject.subjectName || !subject.course || !subject.year || !subject.semester || !subject.miscode) {
-      newSubjectLoad[index].validationError = "Please select a course, year, semester, and subject before confirming.";
+    if (!subject.subjectName || !subject.sub_id) {
+      newSubjectLoad[index].validationError = "Please select a valid subject before confirming.";
+      setFormData({ ...formData, subjectLoad: newSubjectLoad });
+      return;
+    }
+
+    // Check if subject belongs to the selected department
+    const selectedSubject = subjects.find(s => s.sub_name === subject.subjectName);
+    if (selectedSubject && selectedSubject.sub_course !== formData.department.ins_dept) {
+      newSubjectLoad[index].validationError = "This subject does not belong to the selected department.";
+      setFormData({ ...formData, subjectLoad: newSubjectLoad });
+      return;
+    }
+
+    // Check for duplicate subjects
+    const duplicateIndex = formData.subjectLoad.findIndex((sub, i) => 
+      i !== index && sub.sub_id === subject.sub_id && sub.isConfirmed
+    );
+    
+    if (duplicateIndex !== -1) {
+      newSubjectLoad[index].validationError = "This subject has already been added and confirmed.";
       setFormData({ ...formData, subjectLoad: newSubjectLoad });
       return;
     }
@@ -232,29 +292,58 @@ const InstructorForm = () => {
     setError('');
   };
 
-  // Debug function to check subject status
-  const checkSubjects = () => {
-    const status = formData.subjectLoad.map((subject, index) => ({
-      index,
-      isConfirmed: subject.isConfirmed,
-      subjectName: subject.subjectName,
-      course: subject.course,
-      year: subject.year,
-      semester: subject.semester,
-      miscode: subject.miscode
-    }));
-    setDebugInfo(JSON.stringify(status, null, 2));
-    console.log('Subject Status:', status);
-    console.log('All Confirmed:', formData.subjectLoad.every(sub => sub.isConfirmed));
+  const validateForm = () => {
+    // Check personal info
+    if (!formData.personalInfo.ins_fname?.trim() || 
+        !formData.personalInfo.ins_lname?.trim() || 
+        !formData.personalInfo.ins_dob || 
+        !formData.personalInfo.ins_sex) {
+      return "Please fill in all required personal information fields.";
+    }
+
+    // Check contact details
+    if (!formData.contactDetails.ins_email?.trim() || 
+        !formData.contactDetails.ins_contact?.trim()) {
+      return "Please fill in all required contact details.";
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(formData.contactDetails.ins_email)) {
+      return "Please enter a valid email address.";
+    }
+
+    // Validate contact number (basic validation)
+    const contactRegex = /^[\d\s\-+()]{10,}$/;
+    if (!contactRegex.test(formData.contactDetails.ins_contact)) {
+      return "Please enter a valid contact number.";
+    }
+
+    if (!formData.department.ins_dept) {
+      return "Please select a department.";
+    }
+
+    // Check if all subjects are confirmed
+    const allSubjectsConfirmed = formData.subjectLoad.every(sub => sub.isConfirmed);
+    if (!allSubjectsConfirmed) {
+      return "Please confirm all subjects before proceeding. Click the 'Confirm' button for each subject.";
+    }
+
+    // Check if at least one subject is selected
+    if (formData.subjectLoad.length === 0) {
+      return "At least one subject is required.";
+    }
+
+    return null;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    const allSubjectsConfirmed = formData.subjectLoad.every(sub => sub.isConfirmed);
-    
-    if (!allSubjectsConfirmed) {
-      setError("Please confirm all subjects before proceeding. Click the 'Confirm' button for each subject.");
+    // Validate form
+    const validationError = validateForm();
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -263,46 +352,28 @@ const InstructorForm = () => {
       return;
     }
 
-    // Check if all personal info is filled
-    if (!formData.personalInfo.fname || !formData.personalInfo.lname || !formData.personalInfo.dob || !formData.personalInfo.sex) {
-      setError("Please fill in all required personal information fields.");
-      return;
-    }
-
-    // Check if all contact details are filled
-    if (!formData.contactDetails.email || !formData.contactDetails.contactnum) {
-      setError("Please fill in all required contact details.");
-      return;
-    }
-
     setIsLoading(true);
     setError('');
 
     try {
-      // Map sex to single character (M/F)
-      const sexMap = {
-        'male': 'M',
-        'female': 'F'
-      };
-
-      // Prepare instructor data for API - Use subject IDs instead of MIS codes
+      // Prepare instructor data for API
       const instructorData = {
-        in_fname: formData.personalInfo.fname,
-        in_mname: formData.personalInfo.mname || '',
-        in_lname: formData.personalInfo.lname,
-        in_suffix: formData.personalInfo.suffix || '',
-        in_dob: formData.personalInfo.dob,
-        in_sex: sexMap[formData.personalInfo.sex] || 'M',
-        in_email: formData.contactDetails.email,
-        in_cnum: formData.contactDetails.contactnum,
-        in_dept: formData.subjectLoad[0]?.course || 'BSIT',
-        in_subhandled: formData.subjectLoad.map(subject => subject.subjectId).filter(Boolean), // Use subjectId instead of miscode
+        ins_fname: formData.personalInfo.ins_fname.trim(),
+        ins_mname: formData.personalInfo.ins_mname?.trim() || '',
+        ins_lname: formData.personalInfo.ins_lname.trim(),
+        ins_suffix: formData.personalInfo.ins_suffix?.trim() || '',
+        ins_dob: formData.personalInfo.ins_dob,
+        ins_sex: formData.personalInfo.ins_sex,
+        ins_email: formData.contactDetails.ins_email.trim(),
+        ins_contact: formData.contactDetails.ins_contact.trim(),
+        ins_dept: formData.department.ins_dept,
         moderator_id: currentModerator.mod_id
       };
 
-      console.log('Submitting data to backend:', instructorData);
+      console.log('Submitting instructor data:', instructorData);
 
-      const response = await fetch(`${API_BASE}/instructors`, {
+      // Step 1: Create instructor
+      const instructorResponse = await fetch('/instructors', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -310,23 +381,52 @@ const InstructorForm = () => {
         body: JSON.stringify(instructorData),
       });
 
-      const responseText = await response.text();
-      console.log('Raw response:', responseText);
-
-      if (!response.ok) {
+      if (!instructorResponse.ok) {
+        const errorText = await instructorResponse.text();
         let errorData;
         try {
-          errorData = JSON.parse(responseText);
+          errorData = JSON.parse(errorText);
         } catch (e) {
-          errorData = { error: responseText };
+          errorData = { error: errorText };
         }
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+        throw new Error(errorData.error || `HTTP error! status: ${instructorResponse.status}`);
       }
 
-      const result = JSON.parse(responseText);
-      console.log('Instructor created successfully:', result);
+      const instructorResult = await instructorResponse.json();
+      console.log('Instructor created successfully:', instructorResult);
       
-      // Navigate to moderator panel after successful submission
+      const instructorId = instructorResult.ins.ins_id;
+      
+      // Step 2: Create instructor-subject relationships
+      const subjectPromises = formData.subjectLoad.map(async (subject) => {
+        const subjectLinkData = {
+          ins_id: instructorId,
+          sub_id: subject.sub_id
+        };
+
+        console.log('Creating instructor-subject link:', subjectLinkData);
+
+        const subjectResponse = await fetch('/instructor-subject', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(subjectLinkData),
+        });
+
+        if (!subjectResponse.ok) {
+          const errorText = await subjectResponse.text();
+          throw new Error(`Failed to link subject: ${errorText}`);
+        }
+
+        return subjectResponse.json();
+      });
+
+      await Promise.all(subjectPromises);
+      console.log('All subject links created successfully');
+      
+      // Show success message and navigate
+      alert('Instructor registered successfully!');
       navigate("/mod-panel");
       
     } catch (err) {
@@ -337,24 +437,23 @@ const InstructorForm = () => {
     }
   };
 
-  // Get unique courses from subjects
-  const availableCourses = [...new Set(subjects.map(subject => subject.sb_course))].filter(Boolean);
-
-  // Filter subjects based on selected course, year, and semester
-  const getFilteredSubjects = (subjectLoadItem) => {
-    if (!subjectLoadItem.course || !subjectLoadItem.year || !subjectLoadItem.semester) {
-      return [];
-    }
-
-    return subjects.filter(
-      subject =>
-        subject.sb_course === subjectLoadItem.course &&
-        subject.sb_year === parseInt(subjectLoadItem.year, 10) &&
-        subject.sb_semester === parseInt(subjectLoadItem.semester, 10)
-    );
-  };
+  // Get available subjects for the selected department
+  const availableSubjects = getAvailableSubjects();
+  
+  // Get unique subject names that haven't been confirmed yet
+  const availableSubjectNames = availableSubjects
+    .filter(subject => {
+      // Filter out subjects that are already confirmed in other slots
+      const isAlreadyConfirmed = formData.subjectLoad.some(
+        sub => sub.sub_id === subject.sub_id && sub.isConfirmed
+      );
+      return !isAlreadyConfirmed;
+    })
+    .map(subject => subject.sub_name)
+    .filter(Boolean);
 
   const allSubjectsConfirmed = formData.subjectLoad.every(subject => subject.isConfirmed);
+  const canAddMoreSubjects = availableSubjectNames.length > 0;
 
   return (
     <>
@@ -369,7 +468,6 @@ const InstructorForm = () => {
             </div>
           )}
 
-
           <form onSubmit={handleSubmit} className="space-y-8">
             {/* Personal Info */}
             <section>
@@ -377,23 +475,23 @@ const InstructorForm = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <InputText
                   label="First Name"
-                  name="fname"
-                  value={formData.personalInfo.fname}
+                  name="ins_fname"
+                  value={formData.personalInfo.ins_fname}
                   onChange={(e) => handleChange(e, 'personalInfo')}
                   placeholder="Enter first name"
                   required
                 />
                 <InputText
                   label="Middle Name"
-                  name="mname"
-                  value={formData.personalInfo.mname}
+                  name="ins_mname"
+                  value={formData.personalInfo.ins_mname}
                   onChange={(e) => handleChange(e, 'personalInfo')}
                   placeholder="Enter middle name"
                 />
                 <InputText
                   label="Last Name"
-                  name="lname"
-                  value={formData.personalInfo.lname}
+                  name="ins_lname"
+                  value={formData.personalInfo.ins_lname}
                   onChange={(e) => handleChange(e, 'personalInfo')}
                   placeholder="Enter last name"
                   required
@@ -402,33 +500,32 @@ const InstructorForm = () => {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
                 <InputText
                   label="Suffix"
-                  name="suffix"
-                  value={formData.personalInfo.suffix}
+                  name="ins_suffix"
+                  value={formData.personalInfo.ins_suffix}
                   onChange={(e) => handleChange(e, 'personalInfo')}
                   placeholder="e.g., Jr., Sr."
                 />
                 <InputDateOfBirth
-                  name="dob"
-                  value={formData.personalInfo.dob}
+                  name="ins_dob"
+                  value={formData.personalInfo.ins_dob}
                   onChange={(e) => handleChange(e, 'personalInfo')}
                   required
                 />
                 <div>
-                  <label htmlFor="sex" className="block text-sm font-medium text-gray-700">
+                  <label htmlFor="ins_sex" className="block text-sm font-medium text-gray-700">
                     Sex<span className="text-red-500">*</span>
                   </label>
                   <select
-                    id="sex"
-                    name="sex"
-                    value={formData.personalInfo.sex}
+                    id="ins_sex"
+                    name="ins_sex"
+                    value={formData.personalInfo.ins_sex}
                     onChange={(e) => handleChange(e, 'personalInfo')}
                     className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                     required
                   >
                     <option value="">Select...</option>
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                    {/* Remove "other" option since database only accepts M/F */}
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
                   </select>
                 </div>
               </div>
@@ -440,8 +537,8 @@ const InstructorForm = () => {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <InputText
                   label="Email Address"
-                  name="email"
-                  value={formData.contactDetails.email}
+                  name="ins_email"
+                  value={formData.contactDetails.ins_email}
                   onChange={(e) => handleChange(e, 'contactDetails')}
                   placeholder="Enter email"
                   type="email"
@@ -449,8 +546,8 @@ const InstructorForm = () => {
                 />
                 <InputText
                   label="Contact Number"
-                  name="contactnum"
-                  value={formData.contactDetails.contactnum}
+                  name="ins_contact"
+                  value={formData.contactDetails.ins_contact}
                   onChange={(e) => handleChange(e, 'contactDetails')}
                   placeholder="Enter contact number"
                   type="tel"
@@ -459,9 +556,49 @@ const InstructorForm = () => {
               </div>
             </section>
 
+            {/* Department Info */}
+            <section>
+              <h3 className="text-xl font-semibold mb-4 border-b pb-2 text-gray-700">Department Information</h3>
+              <div>
+                <label className="block text-sm font-medium mb-1 text-gray-700">
+                  Department<span className="text-red-500">*</span>
+                </label>
+                <select
+                  name="ins_dept"
+                  value={formData.department.ins_dept}
+                  onChange={(e) => handleChange(e, 'department')}
+                  className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                  required
+                >
+                  <option value="">Select Department</option>
+                  <option value="BSIT">BSIT</option>
+                  <option value="BSIS">BSIS</option>
+                  <option value="BSCS">BSCS</option>
+                </select>
+              </div>
+              {formData.department.ins_dept && (
+                <div className="mt-2 text-sm text-blue-600">
+                  You can only select subjects from the {formData.department.ins_dept} department
+                </div>
+              )}
+            </section>
+
             {/* Subject Load */}
             <section>
               <h3 className="text-xl font-semibold mb-4 border-b pb-2 text-gray-700">Subject Load</h3>
+              
+              {!formData.department.ins_dept && (
+                <div className="mb-4 p-3 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded">
+                  Please select a department first to see available subjects.
+                </div>
+              )}
+
+              {formData.department.ins_dept && availableSubjects.length === 0 && (
+                <div className="mb-4 p-3 bg-yellow-100 border border-yellow-400 text-yellow-700 rounded">
+                  No subjects available for the {formData.department.ins_dept} department.
+                </div>
+              )}
+
               {formData.subjectLoad.map((subject, index) => (
                 <div key={index} className={`space-y-4 p-4 border-2 rounded-md mb-4 ${subject.isConfirmed ? 'border-green-500 bg-green-50' : 'border-gray-300 bg-gray-50'}`}>
                   <div className="flex justify-between items-center">
@@ -496,63 +633,7 @@ const InstructorForm = () => {
                     <p className="text-green-600 text-sm">✓ Subject confirmed</p>
                   )}
 
-                  <div className="grid grid-cols-1 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-1 text-gray-700">
-                        Course<span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        name="course"
-                        value={subject.course || ""}
-                        onChange={(e) => handleChange(e, 'subjectLoad', index)}
-                        className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                        required
-                        disabled={subject.isConfirmed}
-                      >
-                        <option value="">Select Course</option>
-                        {availableCourses.map(course => (
-                          <option key={course} value={course}>{course}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium mb-1 text-gray-700">
-                          Year<span className="text-red-500">*</span>
-                        </label>
-                        <select
-                          name="year"
-                          value={subject.year || ""}
-                          onChange={(e) => handleChange(e, 'subjectLoad', index)}
-                          className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                          required
-                          disabled={!subject.course || subject.isConfirmed}
-                        >
-                          <option value="">Select Year</option>
-                          <option value="1">1</option>
-                          <option value="2">2</option>
-                          <option value="3">3</option>
-                          <option value="4">4</option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium mb-1 text-gray-700">
-                          Semester<span className="text-red-500">*</span>
-                        </label>
-                        <select
-                          name="semester"
-                          value={subject.semester || ""}
-                          onChange={(e) => handleChange(e, 'subjectLoad', index)}
-                          className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                          required
-                          disabled={!subject.course || !subject.year || subject.isConfirmed}
-                        >
-                          <option value="">Select Semester</option>
-                          <option value="1">1</option>
-                          <option value="2">2</option>
-                        </select>
-                      </div>
-                    </div>
+                  <div className="space-y-4">
                     <div>
                       <label className="block text-sm font-medium mb-1 text-gray-700">
                         Subject Name<span className="text-red-500">*</span>
@@ -563,54 +644,95 @@ const InstructorForm = () => {
                         onChange={(e) => handleChange(e, 'subjectLoad', index)}
                         className="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
                         required
-                        disabled={!subject.course || !subject.year || !subject.semester || subject.isConfirmed}
+                        disabled={subject.isConfirmed || !formData.department.ins_dept}
                       >
                         <option value="">Select Subject</option>
-                        {getFilteredSubjects(subject).map(s => (
-                          <option key={s.sb_subid} value={s.sb_name}>
-                            {s.sb_name}
+                        {availableSubjectNames.map(subjectName => (
+                          <option key={subjectName} value={subjectName}>
+                            {subjectName}
                           </option>
                         ))}
                       </select>
+                      {formData.department.ins_dept && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          {availableSubjectNames.length} subjects available
+                        </p>
+                      )}
                     </div>
-                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <InputText
-                      label="MIS Code"
-                      name="miscode"
-                      value={subject.miscode}
-                      readOnly
-                    />
-                    <InputText
-                      label="Units"
-                      name="units"
-                      value={subject.units}
-                      readOnly
-                      type="number"
-                    />
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <InputText
+                        label="Course"
+                        name="course"
+                        value={subject.course}
+                        readOnly
+                      />
+                      <InputText
+                        label="Year"
+                        name="year"
+                        value={subject.year}
+                        readOnly
+                      />
+                      <InputText
+                        label="Semester"
+                        name="semester"
+                        value={subject.semester}
+                        readOnly
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <InputText
+                        label="MIS Code"
+                        name="miscode"
+                        value={subject.miscode}
+                        readOnly
+                      />
+                      <InputText
+                        label="Units"
+                        name="units"
+                        value={subject.units}
+                        readOnly
+                        type="number"
+                      />
+                    </div>
                   </div>
                 </div>
               ))}
-              <button
-                type="button"
-                onClick={addSubject}
-                className="w-full flex justify-center py-2 px-4 border border-blue-600 rounded-md shadow-sm text-sm font-medium text-blue-600 bg-white hover:bg-blue-50"
-              >
-                Add Subject
-              </button>
+              
+              {formData.department.ins_dept && canAddMoreSubjects && (
+                <button
+                  type="button"
+                  onClick={addSubject}
+                  className="w-full flex justify-center py-2 px-4 border border-blue-600 rounded-md shadow-sm text-sm font-medium text-blue-600 bg-white hover:bg-blue-50"
+                >
+                  Add Subject ({availableSubjectNames.length} available)
+                </button>
+              )}
+
+              {formData.department.ins_dept && !canAddMoreSubjects && formData.subjectLoad.length > 0 && (
+                <div className="text-center text-sm text-gray-500 p-2">
+                  All available subjects have been added.
+                </div>
+              )}
             </section>
 
             <div className="bg-blue-50 p-4 rounded-lg">
               <p className="text-sm text-blue-700">
-                <strong>Note:</strong> Make sure to click the "Confirm" button for each subject after selecting all fields.
-                The submit button will only be enabled when all subjects are confirmed.
+                <strong>Note:</strong> 
+                <ul className="list-disc list-inside mt-2">
+                  <li>Select a department first to see available subjects</li>
+                  <li>You can only choose subjects from the selected department</li>
+                  <li>Each subject can only be added once</li>
+                  <li>Click the "Confirm" button for each subject after selection</li>
+                  <li>The submit button will only be enabled when all subjects are confirmed</li>
+                </ul>
               </p>
             </div>
 
             <button
               type="submit"
-              disabled={!allSubjectsConfirmed || isLoading || !currentModerator}
+              disabled={!allSubjectsConfirmed || isLoading || !currentModerator || !formData.department.ins_dept}
               className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-green-600 hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               {isLoading ? 'Submitting...' : `Confirm and Save ${allSubjectsConfirmed ? '✓' : ''}`}

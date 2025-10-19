@@ -78,7 +78,7 @@ const RemarksSummary = ({ summary }) => (
   </div>
 );
 
-// Updated performance calculation for database structure
+// FIXED performance calculation - using lowercase field names to match backend
 const calculatePerformance = (evaluations, instructorID) => {
   if (!evaluations || evaluations.length === 0) {
     return {
@@ -96,8 +96,11 @@ const calculatePerformance = (evaluations, instructorID) => {
     };
   }
 
+  // Convert instructorID to number for comparison (backend uses BIGINT)
+  const targetInstructorId = Number(instructorID);
+  
   const relevantEvaluations = evaluations.filter(
-    e => e.in_instructorid && e.in_instructorid.toString() === instructorID
+    e => e.ins_id && Number(e.ins_id) === targetInstructorId
   );
   
   if (relevantEvaluations.length === 0) {
@@ -120,12 +123,16 @@ const calculatePerformance = (evaluations, instructorID) => {
   let allRemarks = [];
 
   relevantEvaluations.forEach((evaluation) => {
+    // FIXED: Using lowercase field names to match backend
     const { ev_subject, ev_remark, ev_c1, ev_c2, ev_c3, ev_c4, ev_c5 } = evaluation;
     
     if (!ev_subject) return;
 
-    if (!performanceBySubject[ev_subject]) {
-      performanceBySubject[ev_subject] = { 
+    // Use subject name as key (since we don't have subject ID in evaluation response)
+    const subjectKey = ev_subject;
+
+    if (!performanceBySubject[subjectKey]) {
+      performanceBySubject[subjectKey] = { 
         evaluations: [], 
         remarks: [], 
         totalScores: {
@@ -138,14 +145,14 @@ const calculatePerformance = (evaluations, instructorID) => {
       };
     }
 
-    performanceBySubject[ev_subject].evaluations.push(evaluation);
+    performanceBySubject[subjectKey].evaluations.push(evaluation);
     
-    if (ev_remark) {
-      performanceBySubject[ev_subject].remarks.push(ev_remark);
+    if (ev_remark && ev_remark.trim() !== '') {
+      performanceBySubject[subjectKey].remarks.push(ev_remark);
       allRemarks.push(ev_remark);
     }
 
-    // Map database columns to categories
+    // Map database columns to categories - USING LOWERCASE FIELD NAMES
     const categoryScores = {
       "Course Organization and Content": ev_c1,
       "Instructor's Knowledge and Presentation": ev_c2,
@@ -155,16 +162,16 @@ const calculatePerformance = (evaluations, instructorID) => {
     };
 
     Object.entries(categoryScores).forEach(([category, score]) => {
-      if (score !== null && score !== undefined) {
-        performanceBySubject[ev_subject].totalScores[category].total += parseFloat(score);
-        performanceBySubject[ev_subject].totalScores[category].count += 1;
+      if (score !== null && score !== undefined && !isNaN(score)) {
+        performanceBySubject[subjectKey].totalScores[category].total += parseFloat(score);
+        performanceBySubject[subjectKey].totalScores[category].count += 1;
       }
     });
   });
 
   // Calculate averages per subject
-  for (const subjectId in performanceBySubject) {
-    const subjectData = performanceBySubject[subjectId];
+  for (const subjectName in performanceBySubject) {
+    const subjectData = performanceBySubject[subjectName];
     subjectData.averageCategoryScores = {};
     for (const category in subjectData.totalScores) {
       const { total, count } = subjectData.totalScores[category];
@@ -181,10 +188,10 @@ const calculatePerformance = (evaluations, instructorID) => {
     "Overall Effectiveness": { total: 0, count: 0 }
   };
 
-  for (const subjectId in performanceBySubject) {
-    for (const category in performanceBySubject[subjectId].totalScores) {
-      overallTotalScores[category].total += performanceBySubject[subjectId].totalScores[category].total;
-      overallTotalScores[category].count += performanceBySubject[subjectId].totalScores[category].count;
+  for (const subjectName in performanceBySubject) {
+    for (const category in performanceBySubject[subjectName].totalScores) {
+      overallTotalScores[category].total += performanceBySubject[subjectName].totalScores[category].total;
+      overallTotalScores[category].count += performanceBySubject[subjectName].totalScores[category].count;
     }
   }
 
@@ -209,17 +216,38 @@ const AdminInstructorList = () => {
   const [filterCourse, setFilterCourse] = useState("All");
   const [filterYear, setFilterYear] = useState("All");
   const [filterSemester, setFilterSemester] = useState("All");
-  const [selectedSubjectId, setSelectedSubjectId] = useState(null);
+  const [selectedSubjectName, setSelectedSubjectName] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   // State for dynamic data
   const [instructors, setInstructors] = useState([]);
   const [subjects, setSubjects] = useState([]);
+  const [instructorSubjects, setInstructorSubjects] = useState([]);
   const [evaluations, setEvaluations] = useState([]);
 
   const { instructorID } = useParams();
   const navigate = useNavigate();
+
+  // Debug useEffect to check evaluation data structure
+  useEffect(() => {
+    if (evaluations && evaluations.length > 0) {
+      console.log("Evaluations data sample:", evaluations[0]);
+      console.log("Available fields in first evaluation:", Object.keys(evaluations[0]));
+      console.log("Rating values:", {
+        ev_c1: evaluations[0].ev_c1,
+        ev_c2: evaluations[0].ev_c2,
+        ev_c3: evaluations[0].ev_c3,
+        ev_c4: evaluations[0].ev_c4,
+        ev_c5: evaluations[0].ev_c5,
+        ev_C1: evaluations[0].ev_C1, // Check uppercase too
+        ev_C2: evaluations[0].ev_C2,
+        ev_C3: evaluations[0].ev_C3,
+        ev_C4: evaluations[0].ev_C4,
+        ev_C5: evaluations[0].ev_C5
+      });
+    }
+  }, [evaluations]);
 
   // Fetch data from backend
   useEffect(() => {
@@ -228,25 +256,39 @@ const AdminInstructorList = () => {
         setLoading(true);
         setError(null);
 
-        const [instructorsRes, subjectsRes, evaluationsRes] = await Promise.all([
-          fetch("http://localhost:5000/instructor_list"),
-          fetch("http://localhost:5000/subject_list"),
+        const [instructorsRes, subjectsRes, instructorSubjectsRes, evaluationsRes] = await Promise.all([
+          fetch("http://localhost:5000/instructors"),
+          fetch("http://localhost:5000/subjects"),
+          fetch("http://localhost:5000/instructor-subject"),
           fetch("http://localhost:5000/evaluations")
         ]);
 
+        // Check if responses are ok
+        if (!instructorsRes.ok) throw new Error(`Instructors fetch failed: ${instructorsRes.status}`);
+        if (!subjectsRes.ok) throw new Error(`Subjects fetch failed: ${subjectsRes.status}`);
+        if (!instructorSubjectsRes.ok) throw new Error(`Instructor subjects fetch failed: ${instructorSubjectsRes.status}`);
+        if (!evaluationsRes.ok && evaluationsRes.status !== 404) {
+          throw new Error(`Evaluations fetch failed: ${evaluationsRes.status}`);
+        }
+
         const instructorsData = await instructorsRes.json();
         const subjectsData = await subjectsRes.json();
-        const evaluationsData = await evaluationsRes.json();
-
-        if (instructorsData.error) throw new Error(instructorsData.error);
-        if (subjectsData.error) throw new Error(subjectsData.error);
-        if (evaluationsData.error && evaluationsData.error !== "No evaluations found") {
-          throw new Error(evaluationsData.error);
+        const instructorSubjectsData = await instructorSubjectsRes.json();
+        
+        let evaluationsData = [];
+        if (evaluationsRes.ok) {
+          evaluationsData = await evaluationsRes.json();
+          // Handle case where evaluations returns an error object but with 200 status
+          if (evaluationsData.error && evaluationsData.error !== "No evaluations found") {
+            console.warn("Evaluations warning:", evaluationsData.error);
+            evaluationsData = [];
+          }
         }
 
         setInstructors(instructorsData);
         setSubjects(subjectsData);
-        setEvaluations(evaluationsData.error ? [] : evaluationsData);
+        setInstructorSubjects(instructorSubjectsData);
+        setEvaluations(evaluationsData);
 
       } catch (err) {
         console.error("Error fetching data:", err);
@@ -259,20 +301,43 @@ const AdminInstructorList = () => {
     fetchData();
   }, []);
 
-  // Process instructors with their subjects
+  // Process instructors with their subjects - UPDATED to match backend schema
   const instructorsWithSubjects = useMemo(() => {
     return instructors.map((inst) => {
-      const instructorSubjects = subjects.filter((sub) => 
-        inst.in_subhandled && inst.in_subhandled.includes(String(sub.sb_subid))
+      const instructorSubjectLinks = instructorSubjects.filter(
+        link => Number(link.ins_id) === Number(inst.ins_id)
       );
-      return { ...inst, subjects: instructorSubjects };
+      
+      const instructorSubjectsList = instructorSubjectLinks.map(link => {
+        const subject = subjects.find(sub => Number(sub.sub_id) === Number(link.sub_id));
+        return subject ? {
+          sb_subid: subject.sub_id,
+          sb_name: subject.sub_name,
+          sb_course: subject.sub_course,
+          sb_year: subject.sub_year,
+          sb_semester: subject.sub_semester
+        } : null;
+      }).filter(Boolean);
+
+      return {
+        ...inst,
+        subjects: instructorSubjectsList
+      };
     });
-  }, [instructors, subjects]);
+  }, [instructors, subjects, instructorSubjects]);
 
   const performanceData = useMemo(() => {
     if (!selectedInstructor) return null;
-    return calculatePerformance(evaluations, String(selectedInstructor.in_instructorid));
+    return calculatePerformance(evaluations, String(selectedInstructor.ins_id));
   }, [selectedInstructor, evaluations]);
+
+  // Debug performance data
+  useEffect(() => {
+    if (performanceData && performanceData.hasEvaluations) {
+      console.log("Performance data:", performanceData);
+      console.log("Overall averages:", performanceData.overallAverageCategoryScores);
+    }
+  }, [performanceData]);
 
   const displayedData = useMemo(() => {
     if (!performanceData) {
@@ -290,8 +355,8 @@ const AdminInstructorList = () => {
       };
     }
 
-    if (selectedSubjectId) {
-      const subjectData = performanceData.performanceBySubject[selectedSubjectId];
+    if (selectedSubjectName) {
+      const subjectData = performanceData.performanceBySubject[selectedSubjectName];
       if (subjectData) {
         return {
           averageCategoryScores: subjectData.averageCategoryScores,
@@ -322,17 +387,17 @@ const AdminInstructorList = () => {
       totalReviews: performanceData.totalEvaluations,
       hasEvaluations: performanceData.hasEvaluations
     };
-  }, [performanceData, selectedSubjectId]);
+  }, [performanceData, selectedSubjectName]);
 
   useEffect(() => {
     if (instructorID && instructorsWithSubjects.length > 0) {
-      const inst = instructorsWithSubjects.find((i) => String(i.in_instructorid) === instructorID);
+      const inst = instructorsWithSubjects.find((i) => String(i.ins_id) === instructorID);
       setSelectedInstructor(inst || null);
       if (!inst) navigate("/adm-instructor-list");
     } else {
       setSelectedInstructor(null);
     }
-    setSelectedSubjectId(null);
+    setSelectedSubjectName(null);
   }, [instructorID, instructorsWithSubjects, navigate]);
 
   const filteredInstructors = instructorsWithSubjects.filter((inst) => {
@@ -340,18 +405,25 @@ const AdminInstructorList = () => {
     if (filterYear !== "All" && !inst.subjects.some(sub => String(sub.sb_year) === filterYear)) return false;
     if (filterSemester !== "All" && !inst.subjects.some(sub => String(sub.sb_semester) === filterSemester)) return false;
     const query = searchQuery.toLowerCase();
-    const name = `${inst.in_fname} ${inst.in_lname}`.toLowerCase();
-    return name.includes(query) || inst.in_dept.toLowerCase().includes(query);
+    const name = `${inst.ins_fname} ${inst.ins_lname}`.toLowerCase();
+    return name.includes(query) || inst.ins_dept.toLowerCase().includes(query);
   });
 
-  const handleOpenModal = (inst) => navigate(`/adm-instructor-list/${inst.in_instructorid}`);
+  const handleOpenModal = (inst) => navigate(`/adm-instructor-list/${inst.ins_id}`);
   const handleCloseModal = () => navigate("/adm-instructor-list");
 
   const getFullName = (instructor) => {
     if (!instructor) return "";
-    const middleInitial = instructor.in_mname ? ` ${instructor.in_mname[0]}.` : "";
-    return `${instructor.in_fname}${middleInitial} ${instructor.in_lname} ${instructor.in_suffix || ""}`.trim();
+    const middleInitial = instructor.ins_mname ? ` ${instructor.ins_mname.charAt(0)}.` : "";
+    const suffix = instructor.ins_suffix ? ` ${instructor.ins_suffix}` : "";
+    return `${instructor.ins_fname}${middleInitial} ${instructor.ins_lname}${suffix}`.trim();
   };
+
+  // Get unique subject names from performance data for the filter buttons
+  const availableSubjectNames = useMemo(() => {
+    if (!performanceData || !performanceData.performanceBySubject) return [];
+    return Object.keys(performanceData.performanceBySubject);
+  }, [performanceData]);
 
   if (loading) {
     return (
@@ -406,6 +478,7 @@ const AdminInstructorList = () => {
               <option value="All">All Courses</option>
               <option value="BSIT">BSIT</option>
               <option value="BSIS">BSIS</option>
+              <option value="BSCS">BSCS</option>
             </select>
             <select value={filterYear} onChange={(e) => setFilterYear(e.target.value)} className="p-2 border rounded-lg shadow-sm focus:ring-2 focus:ring-blue-500">
               <option value="All">All Years</option>
@@ -426,12 +499,12 @@ const AdminInstructorList = () => {
         {/* --- Instructors Grid Section --- */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredInstructors.map((inst) => (
-            <div key={inst.in_instructorid} className="bg-white shadow-md rounded-lg p-4 cursor-pointer hover:shadow-xl transition-shadow duration-300" onClick={() => handleOpenModal(inst)}>
+            <div key={inst.ins_id} className="bg-white shadow-md rounded-lg p-4 cursor-pointer hover:shadow-xl transition-shadow duration-300" onClick={() => handleOpenModal(inst)}>
               <div className="flex items-center space-x-4">
-                <img src={inst.face || "/profiles/profile-default.png"} alt={`${inst.in_fname} ${inst.in_lname}`} className="w-16 h-16 rounded-full object-cover border-2 border-gray-300"/>
+                <img src="/profiles/profile-default.png" alt={`${inst.ins_fname} ${inst.ins_lname}`} className="w-16 h-16 rounded-full object-cover border-2 border-gray-300"/>
                 <div>
                   <p className="font-semibold text-lg">{getFullName(inst)}</p>
-                  <p className="text-gray-500 text-sm">{inst.in_dept}</p>
+                  <p className="text-gray-500 text-sm">{inst.ins_dept}</p>
                 </div>
               </div>
               <div className="mt-4 pt-3 border-t">
@@ -465,10 +538,10 @@ const AdminInstructorList = () => {
               <button className="absolute top-3 right-3 text-gray-500 hover:text-gray-800 text-2xl p-1" onClick={handleCloseModal}>&times;</button>
 
               <header className="flex items-center space-x-6 mb-6 pb-6 border-b">
-                <img src={selectedInstructor.face || "/profiles/profile-default.png"} alt={`${selectedInstructor.in_fname} ${selectedInstructor.in_lname}`} className="w-24 h-24 rounded-full object-cover border-4 border-gray-200"/>
+                <img src="/profiles/profile-default.png" alt={`${selectedInstructor.ins_fname} ${selectedInstructor.ins_lname}`} className="w-24 h-24 rounded-full object-cover border-4 border-gray-200"/>
                 <div>
                   <h2 className="text-3xl font-bold text-gray-800">{getFullName(selectedInstructor)}</h2>
-                  <p className="text-gray-600 text-lg">{selectedInstructor.in_dept}</p>
+                  <p className="text-gray-600 text-lg">{selectedInstructor.ins_dept}</p>
                 </div>
               </header>
 
@@ -476,12 +549,12 @@ const AdminInstructorList = () => {
                 <aside className="lg:col-span-1 space-y-4">
                   <InfoCard title="Personal Information">
                     <p><strong>Full Name:</strong> {getFullName(selectedInstructor)}</p>
-                    <p><strong>Date of Birth:</strong> {new Date(selectedInstructor.in_dob).toLocaleDateString()}</p>
-                    <p><strong>Sex:</strong> {selectedInstructor.in_sex === 'M' ? 'Male' : 'Female'}</p>
+                    <p><strong>Date of Birth:</strong> {new Date(selectedInstructor.ins_dob).toLocaleDateString()}</p>
+                    <p><strong>Sex:</strong> {selectedInstructor.ins_sex}</p>
                   </InfoCard>
                   <InfoCard title="Contact Details">
-                    <p><strong>Email:</strong> <a href={`mailto:${selectedInstructor.in_email}`} className="text-blue-600 hover:underline">{selectedInstructor.in_email}</a></p>
-                    <p><strong>Contact #:</strong> {selectedInstructor.in_cnum}</p>
+                    <p><strong>Email:</strong> <a href={`mailto:${selectedInstructor.ins_email}`} className="text-blue-600 hover:underline">{selectedInstructor.ins_email}</a></p>
+                    <p><strong>Contact #:</strong> {selectedInstructor.ins_contact}</p>
                   </InfoCard>
                 </aside>
 
@@ -489,22 +562,22 @@ const AdminInstructorList = () => {
                   <h3 className="text-xl font-semibold mb-3 text-slate-800">Performance Metrics</h3>
                   <div className="flex flex-wrap gap-2 mb-4">
                     <button 
-                      onClick={() => setSelectedSubjectId(null)} 
+                      onClick={() => setSelectedSubjectName(null)} 
                       className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
-                        !selectedSubjectId ? "bg-blue-600 text-white font-bold" : "bg-gray-200 hover:bg-gray-300"
+                        !selectedSubjectName ? "bg-blue-600 text-white font-bold" : "bg-gray-200 hover:bg-gray-300"
                       }`}
                     >
                       Overall Performance
                     </button>
-                    {selectedInstructor.subjects.map((sub) => (
+                    {availableSubjectNames.map((subjectName) => (
                       <button 
-                        key={sub.sb_subid} 
-                        onClick={() => setSelectedSubjectId(sub.sb_subid)} 
+                        key={subjectName} 
+                        onClick={() => setSelectedSubjectName(subjectName)} 
                         className={`px-3 py-1.5 text-sm rounded-full transition-colors ${
-                          selectedSubjectId === sub.sb_subid ? "bg-blue-600 text-white font-bold" : "bg-gray-200 hover:bg-gray-300"
+                          selectedSubjectName === subjectName ? "bg-blue-600 text-white font-bold" : "bg-gray-200 hover:bg-gray-300"
                         }`}
                       >
-                        {sub.sb_name}
+                        {subjectName}
                       </button>
                     ))}
                   </div>
@@ -512,8 +585,8 @@ const AdminInstructorList = () => {
                   {/* --- UPDATED Performance Display --- */}
                   <div className="bg-slate-50 p-4 rounded-lg">
                     <p className="font-bold text-slate-700 mb-4">
-                      {selectedSubjectId 
-                        ? `Results for ${selectedInstructor.subjects.find(s => s.sb_subid === selectedSubjectId)?.sb_name || 'Subject'}`
+                      {selectedSubjectName 
+                        ? `Results for ${selectedSubjectName}`
                         : "Overall Summary"
                       }
                       <span className="text-sm font-normal text-slate-500 ml-2">
