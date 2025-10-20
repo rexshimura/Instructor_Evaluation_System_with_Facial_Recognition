@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import ModeratorNavBar from "../../../components/module_layout/ModeratorNavBar";
-import { FiEdit, FiTrash2, FiPlus, FiFilter, FiSearch, FiUser, FiBook, FiX } from "react-icons/fi";
+import { FiEdit, FiTrash2, FiPlus, FiFilter, FiSearch, FiUser, FiBook, FiX, FiSave } from "react-icons/fi";
 import axios from "axios";
 
 const API_BASE = "http://localhost:5000";
@@ -14,6 +14,8 @@ export default function StudentList() {
   const [filters, setFilters] = useState({ course: 'All', year: 'All', section: 'All' });
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editingStudent, setEditingStudent] = useState(null);
   const [formData, setFormData] = useState({
     stud_fname: '',
     stud_mname: '',
@@ -122,8 +124,43 @@ export default function StudentList() {
     setShowAddModal(true);
   };
 
-  const handleCloseModal = () => {
+  const handleCloseAddModal = () => {
     setShowAddModal(false);
+    setFormData({
+      stud_fname: '',
+      stud_mname: '',
+      stud_lname: '',
+      stud_suffix: '',
+      stud_dob: '',
+      stud_sex: '',
+      stud_course: 'BSIT',
+      stud_year: 1,
+      stud_section: '',
+      stud_semester: 1
+    });
+  };
+
+  // Edit Student Modal Functions
+  const handleEditStudent = (student) => {
+    setEditingStudent(student);
+    setFormData({
+      stud_fname: student.stud_fname || '',
+      stud_mname: student.stud_mname || '',
+      stud_lname: student.stud_lname || '',
+      stud_suffix: student.stud_suffix || '',
+      stud_dob: student.stud_dob ? new Date(student.stud_dob).toISOString().split('T')[0] : '',
+      stud_sex: student.stud_sex || '',
+      stud_course: student.stud_course || 'BSIT',
+      stud_year: student.stud_year || 1,
+      stud_section: student.stud_section || '',
+      stud_semester: student.stud_semester || 1
+    });
+    setShowEditModal(true);
+  };
+
+  const handleCloseEditModal = () => {
+    setShowEditModal(false);
+    setEditingStudent(null);
     setFormData({
       stud_fname: '',
       stud_mname: '',
@@ -146,7 +183,7 @@ export default function StudentList() {
     }));
   };
 
-  const handleSubmit = async (e) => {
+  const handleAddSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
 
@@ -155,11 +192,33 @@ export default function StudentList() {
       const newStudent = response.data.student;
       
       setStudents(prev => [newStudent, ...prev]);
-      handleCloseModal();
+      handleCloseAddModal();
       alert('Student added successfully!');
     } catch (error) {
       console.error("Error adding student:", error);
       alert("Failed to add student. Please check the form data and try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    setSubmitting(true);
+
+    try {
+      const response = await axios.put(`${API_BASE}/students/${editingStudent.stud_id}`, formData);
+      const updatedStudent = response.data.updated;
+      
+      setStudents(prev => prev.map(student => 
+        student.stud_id === editingStudent.stud_id ? { ...student, ...updatedStudent } : student
+      ));
+      
+      handleCloseEditModal();
+      alert('Student updated successfully!');
+    } catch (error) {
+      console.error("Error updating student:", error);
+      alert("Failed to update student. Please check the form data and try again.");
     } finally {
       setSubmitting(false);
     }
@@ -297,12 +356,12 @@ export default function StudentList() {
                     </div>
                     
                     <div className="flex space-x-2">
-                      <Link
-                        to={`/mod-edit-student/${student.stud_id}`}
+                      <button
+                        onClick={() => handleEditStudent(student)}
                         className="flex items-center gap-1 text-blue-600 hover:text-blue-800 text-sm font-medium"
                       >
                         <FiEdit size={14} /> Edit
-                      </Link>
+                      </button>
                       <button
                         onClick={() => handleDeleteStudent(student.stud_id, `${student.stud_fname} ${student.stud_lname}`)}
                         className="flex items-center gap-1 text-red-600 hover:text-red-800 text-sm font-medium"
@@ -407,14 +466,14 @@ export default function StudentList() {
               <div className="flex justify-between items-center p-6 border-b">
                 <h2 className="text-xl font-bold text-gray-800">Add New Student</h2>
                 <button
-                  onClick={handleCloseModal}
+                  onClick={handleCloseAddModal}
                   className="text-gray-400 hover:text-gray-600 transition duration-150"
                 >
                   <FiX size={24} />
                 </button>
               </div>
 
-              <form onSubmit={handleSubmit} className="p-6 space-y-4">
+              <form onSubmit={handleAddSubmit} className="p-6 space-y-4">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -571,7 +630,7 @@ export default function StudentList() {
                 <div className="flex justify-end space-x-3 pt-4">
                   <button
                     type="button"
-                    onClick={handleCloseModal}
+                    onClick={handleCloseAddModal}
                     className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition duration-150"
                   >
                     Cancel
@@ -582,6 +641,207 @@ export default function StudentList() {
                     className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {submitting ? 'Adding...' : 'Add Student'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* Edit Student Modal */}
+        {showEditModal && editingStudent && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-center p-6 border-b">
+                <h2 className="text-xl font-bold text-gray-800">
+                  Edit Student: {editingStudent.stud_fname} {editingStudent.stud_lname}
+                </h2>
+                <button
+                  onClick={handleCloseEditModal}
+                  className="text-gray-400 hover:text-gray-600 transition duration-150"
+                >
+                  <FiX size={24} />
+                </button>
+              </div>
+
+              <form onSubmit={handleEditSubmit} className="p-6 space-y-4">
+                <div className="mb-4 p-3 bg-blue-50 rounded border border-blue-200">
+                  <p className="text-sm text-blue-700">
+                    <strong>Student ID:</strong> {editingStudent.stud_id}
+                  </p>
+                  <p className="text-xs text-blue-600 mt-1">
+                    Note: Student ID cannot be changed
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      First Name *
+                    </label>
+                    <input
+                      type="text"
+                      name="stud_fname"
+                      value={formData.stud_fname}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Middle Name
+                    </label>
+                    <input
+                      type="text"
+                      name="stud_mname"
+                      value={formData.stud_mname}
+                      onChange={handleInputChange}
+                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Last Name *
+                    </label>
+                    <input
+                      type="text"
+                      name="stud_lname"
+                      value={formData.stud_lname}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Suffix
+                    </label>
+                    <input
+                      type="text"
+                      name="stud_suffix"
+                      value={formData.stud_suffix}
+                      onChange={handleInputChange}
+                      placeholder="JR, III, etc."
+                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Date of Birth *
+                    </label>
+                    <input
+                      type="date"
+                      name="stud_dob"
+                      value={formData.stud_dob}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Gender *
+                    </label>
+                    <select
+                      name="stud_sex"
+                      value={formData.stud_sex}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">Select Gender</option>
+                      <option value="Male">Male</option>
+                      <option value="Female">Female</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Course *
+                    </label>
+                    <select
+                      name="stud_course"
+                      value={formData.stud_course}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="BSIT">BSIT</option>
+                      <option value="BSIS">BSIS</option>
+                      <option value="BSCS">BSCS</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Year Level *
+                    </label>
+                    <select
+                      name="stud_year"
+                      value={formData.stud_year}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      {[1, 2, 3, 4].map(year => (
+                        <option key={year} value={year}>Year {year}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Section *
+                    </label>
+                    <input
+                      type="text"
+                      name="stud_section"
+                      value={formData.stud_section}
+                      onChange={handleInputChange}
+                      required
+                      placeholder="e.g., A, B, C"
+                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Semester *
+                    </label>
+                    <select
+                      name="stud_semester"
+                      value={formData.stud_semester}
+                      onChange={handleInputChange}
+                      required
+                      className="w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value={1}>1st Semester</option>
+                      <option value={2}>2nd Semester</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex justify-end space-x-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={handleCloseEditModal}
+                    className="px-4 py-2 text-gray-600 border border-gray-300 rounded-md hover:bg-gray-50 transition duration-150"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={submitting}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <FiSave size={16} />
+                    {submitting ? 'Saving...' : 'Save Changes'}
                   </button>
                 </div>
               </form>

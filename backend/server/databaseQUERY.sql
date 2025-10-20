@@ -46,6 +46,7 @@ CREATE SEQUENCE seq_log START 1;
 CREATE SEQUENCE seq_ev START 1;
 CREATE SEQUENCE seq_stud_sect START 1;
 CREATE SEQUENCE seq_ssi START 1;
+CREATE SEQUENCE seq_face START 1;
 
 -- =====================================================
 -- CREATE MAIN TABLES (order matters for FKs)
@@ -88,6 +89,17 @@ CREATE TABLE instructor (
   ins_email  TEXT NOT NULL UNIQUE,
   ins_contact TEXT NOT NULL,
   ins_dept   TEXT NOT NULL
+);
+
+-- FACE RECOGNITION TABLE
+CREATE TABLE instructor_face (
+    face_id INTEGER PRIMARY KEY DEFAULT nextval('seq_ssi'), -- Reusing sequence
+    ins_id BIGINT NOT NULL REFERENCES instructor(ins_id) ON DELETE CASCADE,
+    face_uuid TEXT NOT NULL UNIQUE,
+    face_image_url TEXT,
+    date_created TIMESTAMP NOT NULL DEFAULT now(),
+    created_by TEXT NOT NULL,
+    is_active BOOLEAN DEFAULT true
 );
 
 -- SUBJECT TABLE
@@ -413,6 +425,62 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- FACE RECOGNITION CRUD FUNCTIONS
+CREATE OR REPLACE FUNCTION instructor_face_create(
+    p_ins_id BIGINT,
+    p_face_uuid TEXT,
+    p_face_image_url TEXT,
+    p_created_by TEXT
+) RETURNS instructor_face AS $$
+DECLARE 
+    _f instructor_face%ROWTYPE;
+BEGIN
+    INSERT INTO instructor_face(ins_id, face_uuid, face_image_url, created_by)
+    VALUES (p_ins_id, p_face_uuid, p_face_image_url, p_created_by)
+    RETURNING * INTO _f;
+    RETURN _f;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION instructor_face_read(p_face_id INTEGER) RETURNS instructor_face AS $$
+DECLARE _f instructor_face%ROWTYPE;
+BEGIN
+    SELECT * INTO _f FROM instructor_face WHERE face_id = p_face_id;
+    RETURN _f;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION instructor_face_read_by_uuid(p_face_uuid TEXT) RETURNS instructor_face AS $$
+DECLARE _f instructor_face%ROWTYPE;
+BEGIN
+    SELECT * INTO _f FROM instructor_face WHERE face_uuid = p_face_uuid;
+    RETURN _f;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION instructor_face_read_by_instructor(p_ins_id BIGINT) RETURNS SETOF instructor_face AS $$
+BEGIN
+    RETURN QUERY SELECT * FROM instructor_face WHERE ins_id = p_ins_id AND is_active = true;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION instructor_face_deactivate(p_face_id INTEGER) RETURNS instructor_face AS $$
+DECLARE _f instructor_face%ROWTYPE;
+BEGIN
+    UPDATE instructor_face 
+    SET is_active = false
+    WHERE face_id = p_face_id
+    RETURNING * INTO _f;
+    RETURN _f;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION instructor_face_delete(p_face_id INTEGER) RETURNS VOID AS $$
+BEGIN
+    DELETE FROM instructor_face WHERE face_id = p_face_id;
+END;
+$$ LANGUAGE plpgsql;
+
 -- SUBJECT CRUD FUNCTIONS
 CREATE OR REPLACE FUNCTION subject_create(
   p_name TEXT, p_semester INTEGER, p_year INTEGER, p_course TEXT, p_units INTEGER
@@ -671,4 +739,3 @@ ORDER BY table_name;
 COMMIT;
 
 SELECT '=== DATABASE READY FOR USE ===' as final_status;
-

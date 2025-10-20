@@ -18,7 +18,8 @@ import AdminStatistics from "./pages/01-administration/statistics/admin_statisti
 // MODERATOR ROUTES
 import ModeratorPanel from "./pages/02-moderator/moderator_panel";
 import RegisterForm from "./pages/02-moderator/register_instructor/register_form";
-import FaceRecord from "./pages/02-moderator/register_instructor/register_face";
+import SelectInstructor from "./pages/02-moderator/register_instructor/registerFace";
+import FaceRecord from "./pages/02-moderator/register_instructor/FaceRecord";
 import InstructorList from "./pages/02-moderator/instructor_list/instructor_list";
 import StudentList from "./pages/02-moderator/student_list/student_list";
 import SectionList from "./pages/02-moderator/section_list/section_list";
@@ -64,8 +65,8 @@ function App() {
       <Route element={<ProtectedRoute requiredRole="moderator" />}>
         <Route path="/mod-panel" element={<ModeratorPanel />} />
         <Route path="/mod-register-instructor" element={<RegisterForm />} />
-        <Route path="/mod-record-face" element={<FaceRecord />} />
-        <Route path="/mod-record-face/:instructorID" element={<FaceRecord />} />
+        <Route path="/instructor-face-selection" element={<SelectInstructor />} />
+        <Route path="/mod-face-record/:instructorID" element={<FaceRecord />} />
 
         <Route path="/mod-instructor-list" element={<InstructorList />} />
         <Route path="/mod-instructor-list/:instructorID" element={<InstructorList />} />

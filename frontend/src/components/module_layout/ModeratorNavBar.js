@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { FaHome, FaUsers, FaUserPlus, FaIdCard, FaSignOutAlt } from "react-icons/fa";
+import { FaHome, FaUsers, FaUserPlus, FaIdCard, FaSignOutAlt, FaClipboardList, FaChalkboardTeacher, } from "react-icons/fa";
 import LoadingOverlay from "../module_feedback/LoadingOverlay";
 
 export default function ModeratorNavBar() {
@@ -21,7 +21,11 @@ export default function ModeratorNavBar() {
     { label: "Home", path: "/mod-panel", icon: <FaHome /> },
     { label: "Instructor List", path: "/mod-instructor-list", icon: <FaUsers /> },
     { label: "Register Instructor", path: "/mod-register-instructor", icon: <FaUserPlus /> },
-    { label: "Record Face", path: "/mod-record-face", icon: <FaIdCard /> },
+    { label: "Record Face", path: "/instructor-face-selection", icon: <FaIdCard /> },
+    { label: "Manage Students", path: "/mod-student-list", icon: <FaUsers /> },
+    { label: "Manage Sections", path: "/mod-section-list", icon: <FaChalkboardTeacher /> },
+    { label: "Assign Sections", path: "/mod-instructor-sections", icon: <FaClipboardList /> },
+
   ];
 
   return (

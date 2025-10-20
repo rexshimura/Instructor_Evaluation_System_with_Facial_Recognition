@@ -13,6 +13,7 @@ import instructorSubjectRoutes from './routes/instructorSubjectRoutes.js';
 import logRoutes from './routes/logRoutes.js';
 import studentSectionRoutes from './routes/studentSectionRoutes.js';
 import sectionSubjectInstructorRoutes from './routes/sectionSubjectInstructorRoutes.js';
+import instructorFaceRoutes from './routes/instructorFaceRoutes.js';
 
 const app = express();
 
@@ -37,6 +38,7 @@ app.use('/instructor-subject', instructorSubjectRoutes);
 app.use('/logs', logRoutes);
 app.use('/student-sections', studentSectionRoutes);
 app.use('/section-assignments', sectionSubjectInstructorRoutes);
+app.use('/instructor-faces', instructorFaceRoutes);
 
 // Health check
 app.get('/', (req, res) =>
