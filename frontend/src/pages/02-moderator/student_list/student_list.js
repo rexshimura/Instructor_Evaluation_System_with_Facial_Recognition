@@ -426,8 +426,8 @@ export default function StudentList() {
                     ) : (
                       <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-center">
                         <p className="text-sm text-yellow-700">Not assigned to any sections</p>
-                        <Link 
-                          to={`/mod-assign-student/${student.stud_id}`} 
+                        <Link
+                          to={`/mod-section-list`}
                           className="text-xs text-yellow-600 hover:text-yellow-800 underline"
                         >
                           Assign to sections
