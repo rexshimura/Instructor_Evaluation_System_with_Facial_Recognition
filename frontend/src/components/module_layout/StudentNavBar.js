@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { FaHome, FaChalkboardTeacher, FaSignOutAlt } from "react-icons/fa";
+import { FaHome, FaChalkboardTeacher, FaSignOutAlt, FaHistory, FaBook } from "react-icons/fa";
 import LoadingOverlay from "../module_feedback/LoadingOverlay";
 
 export default function StudentNavBar() {
@@ -20,6 +20,8 @@ export default function StudentNavBar() {
   const navItems = [
     { label: "Home", path: "/home", icon: <FaHome /> },
     { label: "Evaluate", path: "/instructor-list", icon: <FaChalkboardTeacher /> },
+    { label: "History", path: "/student-history", icon: <FaHistory /> },
+    { label: "Guidelines", path: "/guidelines", icon: <FaBook /> },
   ];
 
   return (
