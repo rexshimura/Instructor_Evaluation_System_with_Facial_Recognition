@@ -100,6 +100,7 @@ CREATE TABLE instructor_face (
     face_id INTEGER PRIMARY KEY DEFAULT nextval('seq_ssi'), -- Reusing sequence
     ins_id BIGINT NOT NULL REFERENCES instructor(ins_id) ON DELETE CASCADE,
     face_uuid TEXT NOT NULL UNIQUE,
+    person_id_azure TEXT,
     date_created TIMESTAMP NOT NULL DEFAULT now(),
     created_by TEXT NOT NULL,
     is_active BOOLEAN DEFAULT true
