@@ -19,6 +19,8 @@ DROP TABLE IF EXISTS subject_table CASCADE;
 DROP TABLE IF EXISTS instructor CASCADE;
 DROP TABLE IF EXISTS moderator CASCADE;
 DROP TABLE IF EXISTS admin_table CASCADE;
+DROP TABLE IF EXISTS instructor_face CASCADE;
+
 
 DROP SEQUENCE IF EXISTS seq_student;
 DROP SEQUENCE IF EXISTS seq_instructor_counter;
@@ -31,6 +33,8 @@ DROP SEQUENCE IF EXISTS seq_log;
 DROP SEQUENCE IF EXISTS seq_ev;
 DROP SEQUENCE IF EXISTS seq_stud_sect;
 DROP SEQUENCE IF EXISTS seq_ssi;
+DROP SEQUENCE IF EXISTS seq_face;
+
 
 -- =====================================================
 -- SEQUENCES (start values as requested)
@@ -96,7 +100,6 @@ CREATE TABLE instructor_face (
     face_id INTEGER PRIMARY KEY DEFAULT nextval('seq_ssi'), -- Reusing sequence
     ins_id BIGINT NOT NULL REFERENCES instructor(ins_id) ON DELETE CASCADE,
     face_uuid TEXT NOT NULL UNIQUE,
-    face_image_url TEXT,
     date_created TIMESTAMP NOT NULL DEFAULT now(),
     created_by TEXT NOT NULL,
     is_active BOOLEAN DEFAULT true
