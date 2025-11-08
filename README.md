@@ -27,7 +27,7 @@ This workflow ensures the integrity of the evaluation process and provides instr
 After cloning the repository, follow the steps below to set up the system:
 
 ### Backend Setup
-1. cd backend/server
+1. cd backend
 2. npm install express cors pg nodemon
 3. npx nodemon server.js
 
