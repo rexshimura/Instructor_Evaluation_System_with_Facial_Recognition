@@ -1,4 +1,4 @@
-import pool from '../db/pool.js';
+import pool from '../server/db/pool.js'; // Import your database pool
 
 export const createModerator = async (payload) => {
   const q = `INSERT INTO moderator (mod_username, mod_password, mod_fname, mod_mname, mod_lname, created_by)

@@ -1,15 +1,26 @@
 // src/services/apiService.js
 
-// For development - adjust based on your environment
+// Use environment variables or a default
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
 
+/**
+ * Helper function to handle fetch responses
+ */
+const handleResponse = async (response) => {
+    if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ message: 'An unknown error occurred' }));
+        throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+    }
+    return await response.json();
+};
+
 export const apiService = {
-    // --- INSTRUCTOR API CALLS ---
+
+    // --- GENERIC INSTRUCTOR API CALLS (Unchanged) ---
     async getInstructors() {
         try {
             const response = await fetch(`${API_BASE_URL}/instructors`);
-            if (!response.ok) throw new Error('Failed to fetch instructors');
-            return await response.json();
+            return await handleResponse(response);
         } catch (error) {
             console.error('Error fetching instructors:', error);
             throw error;
@@ -19,130 +30,105 @@ export const apiService = {
     async getInstructorById(id) {
         try {
             const response = await fetch(`${API_BASE_URL}/instructors/${id}`);
-            if (!response.ok) throw new Error('Failed to fetch instructor');
-            return await response.json();
+            return await handleResponse(response);
         } catch (error) {
             console.error('Error fetching instructor:', error);
             throw error;
         }
     },
 
-    // --- FACE DATABASE API CALLS (Local DB) ---
-    async registerInstructorFace(ins_id, face_uuid, person_id_azure, created_by = 'system') {
+    // --- LUXAND FACE API CALLS (Updated) ---
+
+    /**
+     * Replaces ALL the Azure steps. This one call does everything.
+     * It calls your backend's POST /instructor-faces/register route.
+     */
+    async registerLuxandFace(ins_id, imageBase64) {
         try {
-            // Note: Ensure your backend's /instructor-faces/register endpoint accepts 'person_id_azure'
             const response = await fetch(`${API_BASE_URL}/instructor-faces/register`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ ins_id, face_uuid, person_id_azure, created_by })
+                // The backend expects this payload:
+                body: JSON.stringify({ ins_id, imageBase64 })
             });
-
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ message: 'Failed to register face' }));
-                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-            }
-            return await response.json();
+            return await handleResponse(response);
         } catch (error) {
-            console.error('Error registering instructor face:', error);
+            console.error('Error registering Luxand face:', error);
             throw error;
         }
     },
 
+    /**
+     * Gets all active faces for one instructor.
+     * Calls your backend's GET /instructor-faces/instructor/:instructorId route.
+     * (Make sure your backend route file matches this!)
+     */
     async getInstructorFaces(instructorId) {
         try {
+            // *** CHECK THIS URL ***
+            // Your apiService.js has /instructor/:instructorId
+            // My previous route suggestion was /:ins_id
+            // Make sure your backend route matches this!
             const response = await fetch(`${API_BASE_URL}/instructor-faces/instructor/${instructorId}`);
-            if (!response.ok) throw new Error('Failed to fetch instructor faces');
-            return await response.json();
+            return await handleResponse(response);
         } catch (error) {
             console.error('Error fetching instructor faces:', error);
             throw error;
         }
     },
 
+    /**
+     * Gets instructor details from a face UUID.
+     * Calls your backend's GET /instructor-faces/face/:faceUuid route.
+     */
     async getInstructorByFaceUuid(faceUuid) {
         try {
             const response = await fetch(`${API_BASE_URL}/instructor-faces/face/${faceUuid}`);
-            if (!response.ok) {
-                if (response.status === 404) {
-                    return { success: false, message: 'Instructor not found for this face UUID' };
-                }
-                throw new Error('Failed to find instructor by face UUID');
-            }
-            return await response.json();
+            return await handleResponse(response);
         } catch (error) {
             console.error('Error finding instructor by face UUID:', error);
-            return {
-                success: false,
-                message: error.message || 'Failed to lookup instructor'
-            };
+            if (error.message.includes('404')) {
+                return { success: false, message: 'Instructor not found for this face UUID' };
+            }
+            throw error;
         }
     },
 
+    /**
+     * Deletes a specific face record.
+     * Calls your backend's DELETE /instructor-faces/:id route.
+     */
     async deleteInstructorFace(faceId) {
         try {
             const response = await fetch(`${API_BASE_URL}/instructor-faces/${faceId}`, {
                 method: 'DELETE',
             });
-
-            if (!response.ok) throw new Error('Failed to delete instructor face');
-            return await response.json();
+            return await handleResponse(response);
         } catch (error) {
             console.error('Error deleting instructor face:', error);
             throw error;
         }
     },
 
-    // --- NEW AZURE FACE API CALLS (Backend Proxy) ---
-    async ensurePersonGroupExists() {
-        const response = await fetch(`${API_BASE_URL}/azure/group/ensure-exists`, { method: 'POST' });
-        if (!response.ok) throw new Error(`Azure Error: ${response.statusText}`);
-        return await response.json();
-    },
-
-    async createAzurePerson(ins_id, name) {
-        const response = await fetch(`${API_BASE_URL}/azure/person/create`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name, userData: ins_id.toString() })
-        });
-        if (!response.ok) throw new Error(`Azure Error: ${response.statusText}`);
-        return await response.json();
-    },
-
-    async deletePersonFaces(personId, faceIds) {
-        const response = await fetch(`${API_BASE_URL}/azure/person/delete-faces`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ personId, faceIds })
-        });
-        if (!response.ok) throw new Error(`Azure Error: ${response.statusText}`);
-        return await response.json();
-    },
-
-    async addPersonFace(personId, base64Image) {
-        const response = await fetch(`${API_BASE_URL}/azure/person/add-face`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ personId, base64Image })
-        });
-        if (!response.ok) throw new Error(`Azure Error: ${response.statusText}`);
-        return await response.json();
-    },
-
-    async trainPersonGroup() {
-        const response = await fetch(`${API_BASE_URL}/azure/group/train`, { method: 'POST' });
-        if (!response.ok) throw new Error(`Azure Error: ${response.statusText}`);
-        return await response.json();
-    },
-    async identifyFace(base64Image) {
-        const response = await fetch(`${API_BASE_URL}/azure/identify`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ base64Image })
-        });
-        if (!response.ok) throw new Error(`Azure Error: ${response.statusText}`);
-        return await response.json();
-    },
+    /**
+     * NEW FUNCTION for the login/recognition page.
+     * This will call a new backend route we need to create.
+     */
+    async recognizeLuxandFace(imageBase64) {
+        try {
+            const response = await fetch(`${API_BASE_URL}/instructor-faces/recognize`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ imageBase64 })
+            });
+            return await handleResponse(response);
+        } catch (error) {
+            console.error('Error recognizing face:', error);
+            throw error;
+        }
+    }
 };

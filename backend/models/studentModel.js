@@ -1,4 +1,4 @@
-import pool from '../db/pool.js';
+import pool from '../server/db/pool.js'; // Import your database pool
 
 // Student CRUD functions
 export const createStudent = async (payload) => {

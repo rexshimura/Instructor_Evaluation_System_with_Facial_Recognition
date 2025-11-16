@@ -16,8 +16,8 @@ import studentSectionRoutes from './routes/studentSectionRoutes.js';
 import sectionSubjectInstructorRoutes from './routes/sectionSubjectInstructorRoutes.js';
 import instructorFaceRoutes from './routes/instructorFaceRoutes.js';
 
-// Import the new Azure-specific routes
-import azureRoutes from './routes/azureRoutes.js';
+// --- AZURE IMPORT REMOVED ---
+// import azureRoutes from './routes/azureRoutes.js'; // <-- THIS LINE IS DELETED
 
 const app = express();
 
@@ -45,8 +45,8 @@ app.use('/student-sections', studentSectionRoutes);
 app.use('/section-assignments', sectionSubjectInstructorRoutes);
 app.use('/instructor-faces', instructorFaceRoutes);
 
-// Mount the new Azure Routes under the '/azure' path
-app.use('/azure', azureRoutes);
+// --- AZURE ROUTE REMOVED ---
+// app.use('/azure', azureRoutes); // <-- THIS LINE IS DELETED
 
 
 // Health check

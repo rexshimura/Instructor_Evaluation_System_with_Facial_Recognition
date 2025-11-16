@@ -1,5 +1,5 @@
 // models/sectionModel.js
-import pool from '../db/pool.js';
+import pool from '../server/db/pool.js'; // Import your database pool
 
 export const createSection = async (payload) => {
   const { rows } = await pool.query(

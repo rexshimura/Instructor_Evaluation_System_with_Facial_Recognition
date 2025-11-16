@@ -1,5 +1,5 @@
 // models/evaluationModel.js - UPDATED VERSION
-import pool from '../db/pool.js';
+import pool from '../server/db/pool.js'; // Import your database pool
 
 export const createEvaluation = async (payload) => {
   console.log("Received evaluation payload:", payload);

@@ -1,5 +1,5 @@
 // models/studentSectionModel.js
-import pool from '../db/pool.js';
+import pool from '../server/db/pool.js'; // Import your database pool
 
 export const createStudentSection = async (sect_id, stud_id) => {
   const { rows } = await pool.query(

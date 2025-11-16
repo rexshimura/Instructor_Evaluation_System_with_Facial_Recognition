@@ -1,5 +1,5 @@
 // models/sectionSubjectInstructorModel.js
-import pool from '../db/pool.js';
+import pool from '../server/db/pool.js'; // Import your database pool
 
 export const createSSI = async (section_id, insub_id) => {
   const { rows } = await pool.query(
