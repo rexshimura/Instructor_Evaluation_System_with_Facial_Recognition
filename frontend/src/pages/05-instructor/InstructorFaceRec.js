@@ -10,7 +10,8 @@ import {
     FaUsers,
     FaCheckCircle,
     FaLock,
-    FaRegDotCircle // Icon for the scan button
+    FaRegDotCircle, // Icon for the scan button
+    FaTimes
 } from "react-icons/fa";
 import VerifyNavBar from "../../components/module_layout/VerifyNavBar";
 import { apiService } from "../../services/apiService";
@@ -25,16 +26,15 @@ export default function InstructorFaceRec() {
 
     // Scanning States
     const [isCameraActive, setIsCameraActive] = useState(false);
-    const [scanStatus, setScanStatus] = useState("idle"); // idle, processing, success, error
-    const [scanMessage, setScanMessage] = useState(""); // To show "No match found" etc.
+    const [scanStatus, setScanStatus] = useState("idle"); // 'idle', 'processing', 'success', 'error'
+    const [scanMessage, setScanMessage] = useState("");
     const [recognizedInstructor, setRecognizedInstructor] = useState(null);
 
     // Refs
     const videoRef = useRef(null);
-
     const navigate = useNavigate();
 
-    // --- 1. Fetch Instructors ---
+    // --- 1. Fetch Instructors (For the list) ---
     useEffect(() => {
         const fetchInstructors = async () => {
             try {
@@ -65,7 +65,7 @@ export default function InstructorFaceRec() {
         }
     }, [searchTerm, instructors]);
 
-    // --- 3. Camera Logic (Manual Mode) ---
+    // --- 3. Camera Logic (Just Video, NO API calls here) ---
     const startCamera = async () => {
         try {
             setError(null);
@@ -73,7 +73,6 @@ export default function InstructorFaceRec() {
             setScanStatus("idle");
             setRecognizedInstructor(null);
 
-            // Start video stream
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: true
             });
@@ -102,12 +101,14 @@ export default function InstructorFaceRec() {
         setScanMessage("");
     };
 
-    // --- 4. Manual Capture & Verify ---
+    // --- 4. THE MANUAL SCAN (Controls the API Request) ---
     const handleManualScan = async () => {
         if (!videoRef.current) return;
 
+        // 🔒 LOCK THE UI: Set status to processing immediately
+        // This disables the button so the user cannot click twice
         setScanStatus("processing");
-        setScanMessage("Analyzing...");
+        setScanMessage("Scanning...");
         setError(null);
 
         try {
@@ -118,21 +119,23 @@ export default function InstructorFaceRec() {
             canvas.getContext('2d').drawImage(videoRef.current, 0, 0);
             const base64Image = canvas.toDataURL('image/jpeg', 0.8);
 
-            // 2. Send to Luxand (Uses 1 Request)
+            // 2. ⚠️ API CALL: This is the ONLY place usage occurs.
+            // It happens exactly ONCE per button click.
             const result = await apiService.recognizeLuxandFace(base64Image);
 
             // 3. Handle Success
             if (result.instructor) {
                 console.log("✅ Match Found:", result.instructor.ins_fname);
-                setScanStatus("success");
+
+                setScanStatus("success"); // Shows Green Overlay
                 setRecognizedInstructor(result.instructor);
 
-                // Navigate after 1.5s
+                // 4. Navigate after 1.5s delay (User sees the green success screen)
                 setTimeout(() => {
                     stopCamera();
                     navigate(`/instructor-profile/${result.instructor.ins_id}`, {
                         state: {
-                            verified: true,
+                            verified: true, // Pass verification flag
                             instructor: result.instructor
                         }
                     });
@@ -142,29 +145,30 @@ export default function InstructorFaceRec() {
         } catch (err) {
             // Handle Failures
             setScanStatus("error");
+
             if (err.message?.includes('404')) {
-                setScanMessage("Face not recognized. Try getting closer or better lighting.");
+                setScanMessage("Face not recognized. Try moving closer.");
             } else if (err.message?.includes('limit')) {
-                setScanMessage("API Limit Reached. Please check quota.");
-                setError("API Limit Reached.");
+                setScanMessage("API Quota Reached.");
+                setError("API Limit Reached. Please upgrade or create a new account.");
             } else {
-                setScanMessage("Recognition failed. Please try again.");
+                setScanMessage("Scan failed. Please try again.");
                 console.error("Scan Error:", err);
             }
 
-            // Reset status to idle after 2s so they can try again
+            // Reset button after 2 seconds so they can try again if they want
             setTimeout(() => {
                 if (scanStatus !== "success") setScanStatus("idle");
-            }, 3000);
+            }, 2000);
         }
     };
 
-    // Cleanup
+    // Cleanup on unmount
     useEffect(() => {
         return () => stopCamera();
     }, []);
 
-    // Handle clicking a name in the list (now just opens camera for manual scan)
+    // Clicking a name just opens the camera, DOES NOT verify automatically
     const handleListClick = (instructor) => {
         setSearchTerm(instructor.ins_lname);
         if (!isCameraActive) {
@@ -206,20 +210,21 @@ export default function InstructorFaceRec() {
                                             className="w-full h-full object-cover transform -scale-x-100"
                                         />
 
-                                        {/* Processing Overlay */}
+                                        {/* Processing Loading Overlay */}
                                         {scanStatus === "processing" && (
-                                            <div className="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-                                                <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500"></div>
+                                            <div className="absolute inset-0 bg-black bg-opacity-50 flex flex-col items-center justify-center z-20">
+                                                <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-500 mb-4"></div>
+                                                <p className="text-white font-bold">Verifying...</p>
                                             </div>
                                         )}
 
-                                        {/* Success Overlay */}
+                                        {/* ✅ SUCCESS MESSAGE OVERLAY */}
                                         {scanStatus === "success" && (
-                                            <div className="absolute inset-0 bg-green-600 bg-opacity-95 flex flex-col items-center justify-center text-white z-50 transition-all duration-300">
+                                            <div className="absolute inset-0 bg-green-600 bg-opacity-95 flex flex-col items-center justify-center text-white z-50 transition-all duration-300 animate-fade-in">
                                                 <FaCheckCircle size={70} className="mb-4 animate-bounce" />
                                                 <h3 className="text-3xl font-bold mb-1">Verified!</h3>
                                                 <p className="text-lg opacity-90">
-                                                    Welcome, {recognizedInstructor?.ins_fname}
+                                                    Redirecting to {recognizedInstructor?.ins_fname}'s profile...
                                                 </p>
                                             </div>
                                         )}
@@ -232,7 +237,7 @@ export default function InstructorFaceRec() {
                                 )}
                             </div>
 
-                            {/* Status Messages */}
+                            {/* Helper Messages */}
                             {scanMessage && scanStatus !== "success" && (
                                 <div className={`w-full mb-4 p-3 rounded-lg text-center font-semibold ${
                                     scanStatus === "error" ? "bg-red-100 text-red-700" : "bg-blue-50 text-blue-700"
@@ -258,20 +263,23 @@ export default function InstructorFaceRec() {
                                     </button>
                                 ) : (
                                     <div className="flex gap-3">
+                                        {/* SAFE BUTTON:
+                                            Disabled during processing or success to prevent double-billing
+                                        */}
                                         <button
                                             onClick={handleManualScan}
                                             disabled={scanStatus === "processing" || scanStatus === "success"}
                                             className={`flex-1 py-3 rounded-lg font-bold transition shadow-md flex items-center justify-center gap-2 text-white
-                                                ${scanStatus === "processing"
+                                                ${scanStatus === "processing" || scanStatus === "success"
                                                 ? "bg-gray-400 cursor-not-allowed"
                                                 : "bg-green-600 hover:bg-green-700"
                                             }`}
                                         >
                                             {scanStatus === "processing" ? (
-                                                "Scanning..."
+                                                "Checking..."
                                             ) : (
                                                 <>
-                                                    <FaRegDotCircle /> Scan Face
+                                                    <FaRegDotCircle /> Scan My Face
                                                 </>
                                             )}
                                         </button>
@@ -279,9 +287,9 @@ export default function InstructorFaceRec() {
                                         <button
                                             onClick={stopCamera}
                                             disabled={scanStatus === "success"}
-                                            className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-bold transition shadow-md"
+                                            className="px-6 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg font-bold transition shadow-md flex items-center justify-center"
                                         >
-                                            Close
+                                            <FaTimes />
                                         </button>
                                     </div>
                                 )}
@@ -290,7 +298,7 @@ export default function InstructorFaceRec() {
                     </div>
                 </div>
 
-                {/* RIGHT: Secure Directory (Unchanged from before) */}
+                {/* RIGHT: Secure Directory (Search logic remains unchanged) */}
                 <div className="flex flex-col h-[600px]">
                     <div className="bg-white rounded-2xl shadow-xl flex flex-col h-full overflow-hidden">
                         <div className="bg-gray-800 p-4 text-white">
