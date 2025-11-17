@@ -16,7 +16,6 @@ export default function ModeratorLogin() {
   const handleLogin = async (e) => {
     e.preventDefault();
     
-    // Basic validation
     if (!username.trim() || !password.trim()) {
       setMessage("❌ Please enter both username and password.");
       return;
@@ -26,18 +25,15 @@ export default function ModeratorLogin() {
     setMessage("");
 
     try {
-      // ✅ CORRECTED: Use POST to /moderators/login (not /moderators/login)
-      const res = await axios.post("/moderators/login", { 
-        username: username.trim(), 
-        password: password.trim() 
+      const res = await axios.post("/moderators/login", {
+        username: username.trim(),
+        password: password.trim()
       });
 
-      console.log("Login response:", res.data);
-      
       if (res.data.moderator) {
         sessionStorage.setItem("user", JSON.stringify(res.data.moderator));
         sessionStorage.setItem("role", "moderator");
-        sessionStorage.setItem("token", "moderator-auth"); // Simple token for now
+        sessionStorage.setItem("token", "moderator-auth");
         navigate("/mod-panel");
       } else {
         setMessage("❌ Invalid response from server");
@@ -45,7 +41,6 @@ export default function ModeratorLogin() {
     } catch (err) {
       console.error("Login error:", err);
       if (err.response && err.response.data) {
-        // Handle different error response formats
         if (err.response.data.error) {
           setMessage(`❌ ${err.response.data.error}`);
         } else if (err.response.data.message) {
@@ -65,13 +60,13 @@ export default function ModeratorLogin() {
 
   return (
     <>
-      <div className="min-h-screen grid grid-cols-1 md:grid-cols-2">
-        {/* Left Column: Image with Text Overlay */}
+      <div className="min-h-screen grid grid-cols-1 md:grid-cols-2 overflow-hidden">
+        {/* Left Column: Image (Fade In) */}
         <div
-          className="hidden md:block bg-cover bg-center relative"
+          className="hidden md:block bg-cover bg-center relative animate-fade-in"
           style={{ backgroundImage: "url('/png/banner/banner-04.png')" }}
         >
-          <div className="absolute bottom-0 left-0 w-full p-4 bg-black/50 text-white text-xs">
+          <div className="absolute bottom-0 left-0 w-full p-4 bg-black/50 text-white text-xs backdrop-blur-sm">
             <p>Image Taken from Cebu Technological University - Main</p>
             <p>Captured by: JP Mahilom</p>
             <p>Made By RavenLabs Development Group, all rights reserved</p>
@@ -82,21 +77,25 @@ export default function ModeratorLogin() {
         <div className="bg-white flex flex-col justify-center items-center p-8 relative">
           <button
             onClick={() => navigate("/")}
-            className="absolute top-8 right-8 flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition"
+            className="absolute top-8 right-8 flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition animate-slide-up delay-500"
           >
             <FaArrowLeft />
             <span>Return</span>
           </button>
 
           <div className="w-full max-w-sm">
-            <h1 className="text-3xl font-bold mb-2">
-              Pro<span className="text-blue-400">Ev</span>
-            </h1>
-            <h2 className="text-2xl font-semibold mb-6 text-gray-800">
-              Moderator Login
-            </h2>
+            {/* Titles (Slide Up) */}
+            <div className="animate-slide-up delay-100">
+                <h1 className="text-3xl font-bold mb-2">
+                Pro<span className="text-blue-400">Ev</span>
+                </h1>
+                <h2 className="text-2xl font-semibold mb-6 text-gray-800">
+                Moderator Login
+                </h2>
+            </div>
+
             <form onSubmit={handleLogin}>
-              <div className="space-y-4">
+              <div className="space-y-4 animate-slide-up delay-200">
                 <InputText
                   label="Username"
                   value={username}
@@ -114,15 +113,16 @@ export default function ModeratorLogin() {
                 />
               </div>
 
-              <div className="mt-6 flex items-center gap-3">
+              <div className="mt-6 flex items-center gap-3 animate-slide-up delay-300">
                 <button
                   type="submit"
-                  className="flex-grow bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition disabled:bg-blue-300 disabled:cursor-not-allowed"
+                  className="flex-grow bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition disabled:bg-blue-300 disabled:cursor-not-allowed shadow-md hover:shadow-lg hover:-translate-y-0.5 transform duration-200"
                   disabled={isLoading || !username.trim() || !password.trim()}
                 >
                   {isLoading ? "Logging in..." : "Login"}
                 </button>
-                {/* Student Login Icon */}
+
+                {/* Icons */}
                 <div className="relative group">
                   <Link
                     to="/stud-login"
@@ -134,7 +134,6 @@ export default function ModeratorLogin() {
                     Login as Student
                   </span>
                 </div>
-                {/* Admin Login Icon */}
                 <div className="relative group">
                   <Link
                     to="/admn-login"
@@ -149,7 +148,7 @@ export default function ModeratorLogin() {
               </div>
 
               {message && (
-                <p className="mt-4 text-center text-red-500">{message}</p>
+                <p className="mt-4 text-center text-red-500 animate-slide-up">{message}</p>
               )}
             </form>
           </div>

@@ -35,13 +35,13 @@ export default function AdminLogin() {
 
   return (
     <>
-      <div className="min-h-screen grid grid-cols-1 md:grid-cols-2">
-        {/* Left Column: Image with Text Overlay */}
+      <div className="min-h-screen grid grid-cols-1 md:grid-cols-2 overflow-hidden">
+        {/* Left Column: Image (Fade In) */}
         <div
-          className="hidden md:block bg-cover bg-center relative"
+          className="hidden md:block bg-cover bg-center relative animate-fade-in"
           style={{ backgroundImage: "url('/png/banner/banner-03.png')" }}
         >
-          <div className="absolute bottom-0 left-0 w-full p-4 bg-black/50 text-white text-xs">
+          <div className="absolute bottom-0 left-0 w-full p-4 bg-black/50 text-white text-xs backdrop-blur-sm">
             <p>Image by Cebu Technological University - Main</p>
             <p>Made By RavenLabs Development Group, all rights reserved</p>
           </div>
@@ -51,21 +51,24 @@ export default function AdminLogin() {
         <div className="bg-white flex flex-col justify-center items-center p-8 relative">
           <button
             onClick={() => navigate('/')}
-            className="absolute top-8 right-8 flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition"
+            className="absolute top-8 right-8 flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition animate-slide-up delay-500"
           >
             <FaArrowLeft />
             <span>Return</span>
           </button>
 
           <div className="w-full max-w-sm">
-            <h1 className="text-3xl font-bold mb-2">
-              Pro<span className="text-blue-400">Ev</span>
-            </h1>
-            <h2 className="text-2xl font-semibold mb-6 text-gray-800">
-              Admin Login
-            </h2>
+            <div className="animate-slide-up delay-100">
+                <h1 className="text-3xl font-bold mb-2">
+                Pro<span className="text-blue-400">Ev</span>
+                </h1>
+                <h2 className="text-2xl font-semibold mb-6 text-gray-800">
+                Admin Login
+                </h2>
+            </div>
+
             <form onSubmit={handleLogin}>
-              <div className="space-y-4">
+              <div className="space-y-4 animate-slide-up delay-200">
                 <InputText
                   label="Username"
                   value={username}
@@ -81,15 +84,15 @@ export default function AdminLogin() {
                 />
               </div>
 
-              <div className="mt-6 flex items-center gap-3">
+              <div className="mt-6 flex items-center gap-3 animate-slide-up delay-300">
                  <button
                     type="submit"
-                    className="flex-grow bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
+                    className="flex-grow bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition shadow-md hover:shadow-lg hover:-translate-y-0.5 transform duration-200"
                     disabled={isLoading}
                   >
                     Login
                   </button>
-                  {/* Moderator Login Icon Only */}
+
                   <div className="relative group">
                     <Link
                       to="/modr-login"
@@ -104,7 +107,7 @@ export default function AdminLogin() {
               </div>
 
               {message && (
-                <p className="mt-4 text-center text-red-500">{message}</p>
+                <p className="mt-4 text-center text-red-500 animate-slide-up">{message}</p>
               )}
             </form>
           </div>
@@ -114,4 +117,3 @@ export default function AdminLogin() {
     </>
   );
 }
-
