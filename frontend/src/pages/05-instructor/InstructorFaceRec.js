@@ -1,15 +1,23 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-    FaceLivenessDetector,
-} from "@aws-amplify/ui-react-liveness";
+import { FaceLivenessDetector } from "@aws-amplify/ui-react-liveness";
 import { Loader } from "@aws-amplify/ui-react";
-import { FaCheck, FaExclamationTriangle, FaArrowLeft } from "react-icons/fa";
+import {
+    FaCheckCircle,
+    FaExclamationCircle,
+    FaTimes,
+    FaUserShield,
+    FaCamera,
+    FaRedo
+} from "react-icons/fa";
 import "@aws-amplify/ui-react/styles.css";
 
 const BACKEND_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/rekognition";
 
 function InstructorFaceRec() {
+    // ==========================================
+    // LOGIC SECTION (Unchanged)
+    // ==========================================
     const [instructorID, setInstructorID] = useState("");
     const [sessionId, setSessionId] = useState(null);
     const [loading, setLoading] = useState(false);
@@ -29,7 +37,6 @@ function InstructorFaceRec() {
         setLoading(true);
         setVerificationResult(null);
         try {
-            console.log("🔄 Creating liveness session...");
             const response = await fetch(`${BACKEND_URL}/create-liveness-session`, {
                 method: "GET",
             });
@@ -40,12 +47,11 @@ function InstructorFaceRec() {
             }
 
             const data = await response.json();
-            console.log("✅ Session created:", data.sessionId);
             setSessionId(data.sessionId);
             setShowLiveness(true);
 
         } catch (error) {
-            console.error("❌ Error creating session:", error);
+            console.error("Error creating session:", error);
             setVerificationResult({
                 status: "error",
                 message: `Error starting verification: ${error.message}`,
@@ -59,7 +65,6 @@ function InstructorFaceRec() {
         setLoading(true);
 
         try {
-            console.log("🔄 Getting verification results...");
             const response = await fetch(`${BACKEND_URL}/get-verification-result`, {
                 method: "POST",
                 headers: {
@@ -72,11 +77,6 @@ function InstructorFaceRec() {
             });
 
             const data = await response.json();
-            console.log("📋 Verification API Response:", {
-                status: response.status,
-                statusText: response.statusText,
-                data: data
-            });
 
             if (response.ok && data.isMatch) {
                 setVerificationResult({
@@ -86,14 +86,11 @@ function InstructorFaceRec() {
                     instructor: data.instructor
                 });
 
-                console.log("✅ Instructor Verified:", data.instructor);
-
                 setTimeout(() => {
                     navigate(`/instructor-profile/${data.instructor.ins_id}`);
                 }, 3000);
 
             } else {
-                console.error("❌ Verification failed:", data);
                 setVerificationResult({
                     status: "error",
                     message: data.error || "Verification failed. Please try again.",
@@ -102,7 +99,6 @@ function InstructorFaceRec() {
             }
 
         } catch (error) {
-            console.error("❌ Error getting results:", error);
             setVerificationResult({
                 status: "error",
                 message: "Network error. Please check your connection and try again.",
@@ -114,7 +110,7 @@ function InstructorFaceRec() {
     };
 
     const handleError = (error) => {
-        console.error("❌ Liveness component error:", error);
+        console.error("Liveness component error:", error);
         setVerificationResult({
             status: "error",
             message: `Liveness check failed: ${error.message}. Please try again.`,
@@ -132,56 +128,56 @@ function InstructorFaceRec() {
     };
 
     const handleBack = () => {
-        navigate(-1); // Go back to previous page
+        navigate(-1);
     };
 
-    // Render result with better UI
+    // ==========================================
+    // UI SECTION
+    // ==========================================
+
     const renderResult = () => {
         if (!verificationResult) return null;
 
         const isSuccess = verificationResult.status === 'success';
 
         return (
-            <div className={`p-6 rounded-lg mt-6 ${
-                isSuccess ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+            <div className={`mt-8 p-6 rounded-xl border text-center transition-all duration-300 ${
+                isSuccess 
+                    ? 'bg-green-50 border-green-200 text-green-800' 
+                    : 'bg-red-50 border-red-200 text-red-800'
             }`}>
-                <div className="flex items-center gap-3 mb-3">
+                <div className="flex justify-center mb-4">
                     {isSuccess ? (
-                        <FaCheck className="text-green-600 text-2xl" />
+                        <FaCheckCircle className="text-4xl text-green-600" />
                     ) : (
-                        <FaExclamationTriangle className="text-red-600 text-2xl" />
+                        <FaExclamationCircle className="text-4xl text-red-600" />
                     )}
-                    <h2 className={`text-xl font-bold ${isSuccess ? 'text-green-800' : 'text-red-800'}`}>
-                        {verificationResult.message}
-                    </h2>
                 </div>
 
+                <h2 className="text-lg font-bold mb-2">
+                    {verificationResult.message}
+                </h2>
+
                 {verificationResult.details && (
-                    <p className={`${isSuccess ? 'text-green-700' : 'text-red-700'} mb-3`}>
+                    <p className={`text-sm mb-4 ${isSuccess ? 'text-green-700' : 'text-red-700'}`}>
                         {verificationResult.details}
                     </p>
                 )}
 
                 {isSuccess ? (
-                    <div className="text-green-700">
-                        <p>Redirecting to your profile...</p>
-                        <div className="mt-2 w-full bg-green-200 rounded-full h-2">
-                            <div className="bg-green-600 h-2 rounded-full animate-pulse"></div>
+                    <div className="flex flex-col items-center mt-4">
+                        <div className="w-full max-w-[200px] bg-green-200 rounded-full h-1.5">
+                            <div className="bg-green-600 h-1.5 rounded-full" style={{width: '100%'}}></div>
                         </div>
+                        <span className="text-xs text-green-600 mt-2 font-medium">Redirecting to profile...</span>
                     </div>
                 ) : (
-                    <div className="flex gap-3 mt-4">
+                    <div className="flex gap-3 justify-center mt-4">
                         <button
                             onClick={handleRetry}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                            className="flex items-center gap-2 px-5 py-2.5 bg-white border border-red-300 text-red-700 rounded-lg hover:bg-red-50 transition shadow-sm font-medium text-sm"
                         >
-                            Try Again
-                        </button>
-                        <button
-                            onClick={handleBack}
-                            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
-                        >
-                            Go Back
+                            <FaRedo className="text-xs" /> Try Again
                         </button>
                     </div>
                 )}
@@ -190,84 +186,113 @@ function InstructorFaceRec() {
     };
 
     return (
-        <div className="min-h-screen bg-gray-100 flex flex-col">
-            {/* Navigation */}
-            <div className="bg-white shadow-sm">
-                <div className="max-w-4xl mx-auto px-6 py-4">
-                    <button
-                        onClick={handleBack}
-                        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition"
-                    >
-                        <FaArrowLeft /> Back
-                    </button>
-                </div>
-            </div>
+        <div className="min-h-screen bg-slate-50 text-slate-800 font-sans flex flex-col items-center justify-center p-4">
 
-            {/* Main Content */}
-            <div className="flex-1 flex items-center justify-center p-6">
-                <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
-                    <h1 className="text-3xl font-bold text-gray-800 mb-2 text-center">
-                        Instructor Verification
+            {/* Main Content Card */}
+            <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl border border-slate-100 overflow-hidden relative">
+
+                {/* Top Right Circular Back/Close Button */}
+                <button
+                    onClick={handleBack}
+                    className="absolute top-4 right-4 p-2 rounded-full text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-all duration-200 z-10"
+                    title="Go Back"
+                >
+                    <FaTimes size={20} />
+                </button>
+
+                {/* Card Header */}
+                <div className="bg-slate-50 px-8 py-10 text-center border-b border-slate-100">
+                    <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-50 text-blue-600 rounded-full mb-5">
+                        <FaUserShield className="text-3xl" />
+                    </div>
+                    <h1 className="text-2xl font-bold text-slate-900">
+                        Identity Verification
                     </h1>
-                    <p className="text-gray-600 text-center mb-8">
-                        Complete a quick liveness check to verify your identity
+                    <p className="text-slate-500 text-sm mt-2">
+                        Enter your instructor ID to verify your identity
                     </p>
+                </div>
 
-                    {loading && (
-                        <div className="text-center py-8">
-                            <Loader size="large" />
-                            <p className="text-gray-600 mt-4">Processing verification...</p>
+                {/* Card Body */}
+                <div className="p-8 pb-10">
+                    {loading && !showLiveness && !verificationResult ? (
+                        <div className="flex flex-col items-center py-8">
+                            <Loader size="large" variation="linear" />
+                            <p className="text-slate-500 text-sm mt-6 font-medium">
+                                Initializing verification...
+                            </p>
                         </div>
-                    )}
+                    ) : (
+                        !loading && !showLiveness && !verificationResult && (
+                            <div className="space-y-8">
 
-                    {!loading && !showLiveness && !verificationResult && (
-                        <>
-                            <div className="mb-6">
-                                <label htmlFor="instructorID" className="block text-lg font-bold text-gray-700 mb-3 text-left">
-                                    Enter Your Instructor ID
-                                </label>
-                                <input
-                                    type="text"
-                                    id="instructorID"
-                                    value={instructorID}
-                                    onChange={(e) => setInstructorID(e.target.value)}
-                                    placeholder="e.g., 1020002"
-                                    className="w-full p-4 border border-gray-300 rounded-lg text-center text-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition"
-                                    disabled={loading}
-                                />
+                                {/* Input Section */}
+                                <div className="space-y-3 pt-2">
+                                    <label
+                                        htmlFor="instructorID"
+                                        className="block text-xs font-bold text-slate-400 uppercase tracking-wider text-center"
+                                    >
+                                        Instructor ID
+                                    </label>
+                                    <input
+                                        type="text"
+                                        id="instructorID"
+                                        value={instructorID}
+                                        onChange={(e) => setInstructorID(e.target.value)}
+                                        placeholder="XXXXXXX"
+                                        maxLength={15}
+                                        className="w-full text-center text-3xl font-mono tracking-[0.3em] text-slate-800 placeholder-slate-200 border-b-2 border-slate-200 py-4 focus:border-blue-600 focus:outline-none bg-transparent transition-colors"
+                                    />
+                                </div>
+
+                                {/* Action Button */}
+                                <button
+                                    onClick={handleStartLivenessCheck}
+                                    disabled={!instructorID.trim()}
+                                    className="w-full py-4 bg-blue-600 text-white rounded-xl font-semibold hover:bg-blue-700 focus:ring-4 focus:ring-blue-100 disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-600/20 mt-4"
+                                >
+                                    <FaCamera /> Verify Identity
+                                </button>
                             </div>
-
-                            <button
-                                onClick={handleStartLivenessCheck}
-                                disabled={loading || !instructorID.trim()}
-                                className="w-full py-4 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition text-lg"
-                            >
-                                Start Verification
-                            </button>
-                        </>
+                        )
                     )}
 
                     {renderResult()}
-
-                    {showLiveness && sessionId && (
-                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                            <div className="bg-white rounded-lg p-4 max-w-2xl w-full mx-4">
-                                <FaceLivenessDetector
-                                    sessionId={sessionId}
-                                    region="us-east-1"
-                                    onAnalysisComplete={handleAnalysisComplete}
-                                    onError={handleError}
-                                    config={{
-                                        "face-liveness-detector": {
-                                            showStartScreen: false
-                                        }
-                                    }}
-                                />
-                            </div>
-                        </div>
-                    )}
                 </div>
             </div>
+
+            {/* Liveness Modal */}
+            {showLiveness && sessionId && (
+                <div className="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                    <div className="w-full max-w-xl relative">
+                        {/* Close Button */}
+                        <button
+                            onClick={handleRetry}
+                            className="absolute -top-12 right-0 text-white/80 hover:text-white text-sm flex items-center gap-2 transition-colors"
+                        >
+                            Cancel <FaTimes />
+                        </button>
+
+                        <div className="bg-black rounded-2xl overflow-hidden shadow-2xl border border-slate-800 relative">
+                            <FaceLivenessDetector
+                                sessionId={sessionId}
+                                region="us-east-1"
+                                onAnalysisComplete={handleAnalysisComplete}
+                                onError={handleError}
+                                config={{
+                                    "face-liveness-detector": {
+                                        showStartScreen: false,
+                                        instructionTextColor: "white",
+                                    }
+                                }}
+                            />
+                        </div>
+                        <p className="text-center text-slate-400 text-sm mt-6">
+                            Please center your face in the oval
+                        </p>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
