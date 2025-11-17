@@ -4,6 +4,19 @@ import { evaluationQuestions } from "../../data/questions";
 import analyzeRemarks from "../../utils/remarkAnalyzer";
 import VerifyNavBar from "../../components/module_layout/VerifyNavBar";
 
+// --- NEW IMPORTS ---
+import {
+  FaUser,
+  FaBirthdayCake,
+  FaVenusMars,
+  FaBuilding,
+  FaIdBadge,
+  FaEnvelope,
+  FaPhone,
+  FaInfoCircle,
+  FaAddressCard
+} from "react-icons/fa";
+
 // --- Helper Functions & Constants ---
 const getScoreWord = (score) => {
   if (score >= 4.5) return "Excellent";
@@ -21,20 +34,18 @@ const SCORE_COLORS = {
   Poor: "bg-red-500",
 };
 
-// Category mapping for database criteria
 const categoryMapping = {
   "Course Organization and Content": "ev_C1",
-  "Instructor's Knowledge and Presentation": "ev_C2", 
+  "Instructor's Knowledge and Presentation": "ev_C2",
   "Communication and Interaction": "ev_C3",
   "Assessment and Feedback": "ev_C4",
   "Overall Effectiveness": "ev_C5"
 };
 
-// Default zero scores for when no evaluations exist
 const getDefaultScores = () => ({
   "Course Organization and Content": "0.00",
   "Instructor's Knowledge and Presentation": "0.00",
-  "Communication and Interaction": "0.00", 
+  "Communication and Interaction": "0.00",
   "Assessment and Feedback": "0.00",
   "Overall Effectiveness": "0.00"
 });
@@ -53,13 +64,32 @@ const EmptyState = ({ message }) => (
   </div>
 );
 
+// Updated InfoCard to handle icon styling better
 const InfoCard = ({ title, children, icon }) => (
-  <div className="bg-slate-50 p-6 rounded-lg shadow-sm">
-    <h3 className="text-xl font-semibold mb-4 border-b pb-2 text-slate-800 flex items-center gap-3">
-      {icon}
+  <div className="bg-slate-50 p-6 rounded-lg shadow-sm border border-slate-100 hover:shadow-md transition-shadow duration-200">
+    <h3 className="text-xl font-bold mb-5 border-b border-slate-200 pb-3 text-slate-800 flex items-center gap-3">
+      {/* Render the icon with a specific color */}
+      <span className="text-blue-600">{icon}</span>
       {title}
     </h3>
-    <div className="space-y-3 text-slate-700">{children}</div>
+    <div className="space-y-4 text-slate-700">{children}</div>
+  </div>
+);
+
+// NEW COMPONENT: Handles individual rows (Icon + Label + Value)
+const InfoItem = ({ icon, label, value }) => (
+  <div className="flex items-start gap-3">
+    <div className="mt-1 text-slate-400 text-lg min-w-[20px]">
+      {icon}
+    </div>
+    <div>
+      <span className="font-bold text-slate-700 block sm:inline sm:mr-2">
+        {label}:
+      </span>
+      <span className="text-slate-600 break-all">
+        {value}
+      </span>
+    </div>
   </div>
 );
 
@@ -106,16 +136,9 @@ const RemarksSummary = ({ summary }) => (
   </div>
 );
 
-// --- Performance Calculation Logic ---
+// --- Performance Calculation Logic (UNCHANGED) ---
 const calculatePerformance = (evaluations, instructorID) => {
-  console.log("🔍 [DEBUG] Starting calculatePerformance with:", {
-    evaluationsCount: evaluations?.length,
-    instructorID,
-    firstEvaluation: evaluations?.[0]
-  });
-
   if (!evaluations || evaluations.length === 0) {
-    console.log("🔍 [DEBUG] No evaluations found");
     return {
       performanceBySubject: {},
       overallAverageCategoryScores: getDefaultScores(),
@@ -125,15 +148,11 @@ const calculatePerformance = (evaluations, instructorID) => {
     };
   }
 
-  // Filter evaluations for this instructor (already filtered by backend, but double-check)
   const relevantEvaluations = evaluations.filter(
     e => e.ins_id && e.ins_id.toString() === instructorID.toString()
   );
-  
-  console.log("🔍 [DEBUG] Relevant evaluations after filtering:", relevantEvaluations.length);
 
   if (relevantEvaluations.length === 0) {
-    console.log("🔍 [DEBUG] No relevant evaluations after filtering");
     return {
       performanceBySubject: {},
       overallAverageCategoryScores: getDefaultScores(),
@@ -146,53 +165,36 @@ const calculatePerformance = (evaluations, instructorID) => {
   const performanceBySubject = {};
   let allRemarks = [];
 
-  relevantEvaluations.forEach((evaluation, index) => {
-    console.log(`🔍 [DEBUG] Processing evaluation ${index}:`, {
-      // Check both uppercase and lowercase field names
-      ev_C1: evaluation.ev_C1,
-      ev_c1: evaluation.ev_c1,
-      ev_C2: evaluation.ev_C2,
-      ev_c2: evaluation.ev_c2,
-      ev_C3: evaluation.ev_C3,
-      ev_c3: evaluation.ev_c3,
-      ev_C4: evaluation.ev_C4,
-      ev_c4: evaluation.ev_c4,
-      ev_C5: evaluation.ev_C5,
-      ev_c5: evaluation.ev_c5,
-      sub_id: evaluation.sub_id,
-      ins_id: evaluation.ins_id
-    });
-
+  relevantEvaluations.forEach((evaluation) => {
     const ev_subject = evaluation.ev_subject || evaluation.subject_name;
     const ev_remark = evaluation.ev_remark;
     const sub_id = evaluation.sub_id;
-    
+
     const subjectKey = sub_id || ev_subject;
 
     if (!subjectKey) return;
 
     if (!performanceBySubject[subjectKey]) {
-      performanceBySubject[subjectKey] = { 
-        evaluations: [], 
-        remarks: [], 
-        totalScores: {}, 
+      performanceBySubject[subjectKey] = {
+        evaluations: [],
+        remarks: [],
+        totalScores: {},
         averageCategoryScores: {},
         subjectName: ev_subject || `Subject ${sub_id}`
       };
-      
+
       Object.keys(categoryMapping).forEach(category => {
         performanceBySubject[subjectKey].totalScores[category] = { total: 0, count: 0 };
       });
     }
 
     performanceBySubject[subjectKey].evaluations.push(evaluation);
-    
+
     if (ev_remark && ev_remark.trim() !== '') {
       performanceBySubject[subjectKey].remarks.push(ev_remark);
       allRemarks.push(ev_remark);
     }
 
-    // FIX: Handle both uppercase and lowercase field names
     const scores = {
       "Course Organization and Content": evaluation.ev_C1 || evaluation.ev_c1,
       "Instructor's Knowledge and Presentation": evaluation.ev_C2 || evaluation.ev_c2,
@@ -202,35 +204,24 @@ const calculatePerformance = (evaluations, instructorID) => {
     };
 
     Object.entries(scores).forEach(([category, score]) => {
-      // Convert to number and handle any string values
       const numericScore = parseFloat(score);
-      console.log(`🔍 [DEBUG] Processing ${category}: ${score} -> ${numericScore}`);
-      
+
       if (!isNaN(numericScore) && numericScore > 0) {
         performanceBySubject[subjectKey].totalScores[category].total += numericScore;
         performanceBySubject[subjectKey].totalScores[category].count += 1;
-        console.log(`🔍 [DEBUG] Added ${numericScore} to ${category}`);
-      } else {
-        console.log(`🔍 [DEBUG] Invalid score for ${category}: ${score}`);
       }
     });
   });
 
-  // Calculate averages for each subject
   for (const subjectId in performanceBySubject) {
     const subjectData = performanceBySubject[subjectId];
-    console.log(`🔍 [DEBUG] Calculating averages for subject ${subjectId}:`, subjectData.totalScores);
-    
+
     for (const category in subjectData.totalScores) {
       const { total, count } = subjectData.totalScores[category];
-      console.log(`🔍 [DEBUG] ${category}: total=${total}, count=${count}`);
-      
       subjectData.averageCategoryScores[category] = count > 0 ? (total / count).toFixed(2) : "0.00";
-      console.log(`🔍 [DEBUG] Average for ${category}: ${subjectData.averageCategoryScores[category]}`);
     }
   }
 
-  // Calculate overall averages across all subjects
   const overallTotalScores = {};
   Object.keys(categoryMapping).forEach(category => {
     overallTotalScores[category] = { total: 0, count: 0 };
@@ -247,19 +238,15 @@ const calculatePerformance = (evaluations, instructorID) => {
   for (const category in overallTotalScores) {
     const { total, count } = overallTotalScores[category];
     overallAverageCategoryScores[category] = count > 0 ? (total / count).toFixed(2) : "0.00";
-    console.log(`🔍 [DEBUG] Overall average for ${category}: ${overallAverageCategoryScores[category]}`);
   }
 
-  const result = { 
-    performanceBySubject, 
-    overallAverageCategoryScores, 
-    overallRemarks: allRemarks, 
+  return {
+    performanceBySubject,
+    overallAverageCategoryScores,
+    overallRemarks: allRemarks,
     totalEvaluations: relevantEvaluations.length,
     hasEvaluations: relevantEvaluations.length > 0
   };
-  
-  console.log("🔍 [DEBUG] Final performance data:", result);
-  return result;
 };
 
 // --- Main Profile Component ---
@@ -268,17 +255,15 @@ export default function InstructorProfile() {
   const [selectedSubjectId, setSelectedSubjectId] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  
+
   const [instructor, setInstructor] = useState(null);
   const [subjects, setSubjects] = useState([]);
   const [evaluations, setEvaluations] = useState([]);
   const [instructorSubjects, setInstructorSubjects] = useState([]);
 
-  // Normalize evaluation field names to handle case sensitivity
   const normalizedEvaluations = useMemo(() => {
     return evaluations.map(evaluation => ({
       ...evaluation,
-      // Ensure uppercase field names exist, fallback to lowercase
       ev_C1: evaluation.ev_C1 || evaluation.ev_c1,
       ev_C2: evaluation.ev_C2 || evaluation.ev_c2,
       ev_C3: evaluation.ev_C3 || evaluation.ev_c3,
@@ -293,9 +278,6 @@ export default function InstructorProfile() {
         setIsLoading(true);
         setError(null);
 
-        console.log("🔍 [DEBUG] Starting data fetch for instructor:", instructorID);
-
-        // Fetch instructor data
         const instructorRes = await fetch(`/instructors/${instructorID}`);
         if (!instructorRes.ok) {
           if (instructorRes.status === 404) {
@@ -303,21 +285,18 @@ export default function InstructorProfile() {
           }
           throw new Error("Failed to fetch instructor");
         }
-        
+
         const instructorData = await instructorRes.json();
-        console.log("🔍 [DEBUG] Instructor data:", instructorData);
         setInstructor(instructorData);
 
-        // Fetch all subjects
         const subjectsRes = await fetch(`/subjects`);
         if (!subjectsRes.ok) {
           throw new Error("Failed to fetch subjects");
         }
-        
+
         const subjectsData = await subjectsRes.json();
         setSubjects(subjectsData);
 
-        // Fetch instructor-subject relationships
         try {
           const instructorSubjectsRes = await fetch(`/instructor-subject`);
           if (instructorSubjectsRes.ok) {
@@ -325,26 +304,18 @@ export default function InstructorProfile() {
             setInstructorSubjects(instructorSubjectsData);
           }
         } catch (err) {
-          console.log("Instructor-subject data not available, continuing without it");
+          console.log("Instructor-subject data not available");
         }
 
-        // Fetch evaluations for this instructor
         try {
           const evalRes = await fetch(`/evaluations/instructor/${instructorID}`);
           if (!evalRes.ok) {
-            if (evalRes.status === 404) {
-              console.log("🔍 [DEBUG] No evaluations found (404)");
-              setEvaluations([]);
-            } else {
-              throw new Error("Failed to fetch evaluations");
-            }
+            if (evalRes.status === 404) setEvaluations([]);
+            else throw new Error("Failed to fetch evaluations");
           } else {
             const evalData = await evalRes.json();
-            console.log("🔍 [DEBUG] Raw evaluation response:", evalData);
-            
-            // Handle backend response structure
             let evaluationsArray = [];
-            
+
             if (Array.isArray(evalData)) {
               evaluationsArray = evalData;
             } else if (evalData && Array.isArray(evalData.evaluations)) {
@@ -352,19 +323,15 @@ export default function InstructorProfile() {
             } else if (evalData && evalData.evaluations === undefined && evalData.statistics === undefined) {
               evaluationsArray = Array.isArray(evalData) ? evalData : [evalData];
             }
-            
-            console.log("🔍 [DEBUG] Processed evaluations array:", evaluationsArray);
-            console.log("🔍 [DEBUG] First evaluation sample:", evaluationsArray[0]);
-            
+
             setEvaluations(evaluationsArray);
           }
         } catch (evalError) {
-          console.log("🔍 [DEBUG] Evaluations fetch error:", evalError);
           setEvaluations([]);
         }
 
       } catch (err) {
-        console.error("🔍 [DEBUG] Error fetching data:", err);
+        console.error("Error fetching data:", err);
         setError(err.message);
       } finally {
         setIsLoading(false);
@@ -376,14 +343,13 @@ export default function InstructorProfile() {
     }
   }, [instructorID]);
 
-  // Get subjects handled by this instructor
   const subjectsHandled = useMemo(() => {
     if (!instructor || !subjects.length || !instructorSubjects.length) return [];
-    
+
     const instructorSubjectLinks = instructorSubjects.filter(
       link => link.ins_id && link.ins_id.toString() === instructorID
     );
-    
+
     return instructorSubjectLinks.map(link => {
       const subject = subjects.find(s => s.sub_id === link.sub_id);
       return subject ? {
@@ -397,34 +363,11 @@ export default function InstructorProfile() {
     }).filter(Boolean);
   }, [instructor, subjects, instructorSubjects, instructorID]);
 
-  // Calculate performance data using normalized evaluations
   const performanceData = useMemo(
     () => calculatePerformance(normalizedEvaluations, instructorID),
     [normalizedEvaluations, instructorID]
   );
 
-  // Debug effect to log data changes
-  useEffect(() => {
-    console.log("🔍 [DEBUG] Original evaluations:", {
-      count: evaluations.length,
-      firstEval: evaluations[0],
-      allEvals: evaluations
-    });
-  }, [evaluations]);
-
-  useEffect(() => {
-    console.log("🔍 [DEBUG] Normalized evaluations:", {
-      count: normalizedEvaluations.length,
-      firstEval: normalizedEvaluations[0],
-      allEvals: normalizedEvaluations
-    });
-  }, [normalizedEvaluations]);
-
-  useEffect(() => {
-    console.log("🔍 [DEBUG] Performance data updated:", performanceData);
-  }, [performanceData]);
-
-  // Determine displayed data
   const displayedData = useMemo(() => {
     if (!performanceData) {
       return {
@@ -467,9 +410,8 @@ export default function InstructorProfile() {
     };
   }, [performanceData, selectedSubjectId, subjectsHandled]);
 
-  // Safe data access for instructor
-  const instructorName = instructor ? 
-    `${instructor.ins_fname || ''} ${instructor.ins_mname ? instructor.ins_mname[0] + '.' : ''} ${instructor.ins_lname || ''} ${instructor.ins_suffix || ''}`.trim() 
+  const instructorName = instructor ?
+    `${instructor.ins_fname || ''} ${instructor.ins_mname ? instructor.ins_mname[0] + '.' : ''} ${instructor.ins_lname || ''} ${instructor.ins_suffix || ''}`.trim()
     : '';
 
   const instructorDob = instructor?.ins_dob ? new Date(instructor.ins_dob).toLocaleDateString() : 'N/A';
@@ -496,7 +438,7 @@ export default function InstructorProfile() {
         <div className="w-full max-w-7xl bg-white rounded-lg shadow-xl p-8 mt-16 text-center">
           <h2 className="text-2xl font-bold text-red-600 mb-4">Error</h2>
           <p className="text-slate-600 mb-4">{error}</p>
-          <button 
+          <button
             onClick={() => window.location.reload()}
             className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
           >
@@ -532,27 +474,58 @@ export default function InstructorProfile() {
           <p className="text-center text-slate-500">Performance and information overview</p>
         </header>
 
-        {/* --- Instructor Information --- */}
+        {/* --- Instructor Information WITH ICONS --- */}
         <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <InfoCard title="Personal Information" icon="👤">
-            <p><strong>Full Name:</strong> {instructorName}</p>
-            <p><strong>Date of Birth:</strong> {instructorDob}</p>
-            <p><strong>Sex:</strong> {instructorSex}</p>
-            <p><strong>Department:</strong> {instructorDept}</p>
-            <p><strong>Instructor ID:</strong> {instructorID}</p>
+
+          {/* Personal Info Card */}
+          <InfoCard title="Personal Information" icon={<FaInfoCircle className="text-xl" />}>
+            <InfoItem
+              icon={<FaUser />}
+              label="Full Name"
+              value={instructorName}
+            />
+            <InfoItem
+              icon={<FaBirthdayCake />}
+              label="Date of Birth"
+              value={instructorDob}
+            />
+            <InfoItem
+              icon={<FaVenusMars />}
+              label="Sex"
+              value={instructorSex}
+            />
+            <InfoItem
+              icon={<FaBuilding />}
+              label="Department"
+              value={instructorDept}
+            />
+            <InfoItem
+              icon={<FaIdBadge />}
+              label="Instructor ID"
+              value={instructorID}
+            />
           </InfoCard>
-          <InfoCard title="Contact Details" icon="📞">
-            <p><strong>Email:</strong> 
-              {instructorEmail !== 'N/A' ? (
-                <a href={`mailto:${instructorEmail}`} className="text-blue-600 hover:underline ml-1">
-                  {instructorEmail}
-                </a>
-              ) : (
-                <span className="ml-1">N/A</span>
-              )}
-            </p>
-            <p><strong>Contact Number:</strong> {instructorContact}</p>
+
+          {/* Contact Details Card */}
+          <InfoCard title="Contact Details" icon={<FaAddressCard className="text-xl" />}>
+            <InfoItem
+              icon={<FaEnvelope />}
+              label="Email"
+              value={
+                instructorEmail !== 'N/A' ? (
+                  <a href={`mailto:${instructorEmail}`} className="text-blue-600 hover:underline">
+                    {instructorEmail}
+                  </a>
+                ) : 'N/A'
+              }
+            />
+            <InfoItem
+              icon={<FaPhone />}
+              label="Contact Number"
+              value={instructorContact}
+            />
           </InfoCard>
+
         </section>
 
         {/* --- Subjects Handled --- */}
