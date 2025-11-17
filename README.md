@@ -30,16 +30,21 @@ After cloning the repository, follow the steps below to set up the system:
 1. cd backend
 2. npm install
 3. npm install express cors pg nodemon
-4. Setup database connection in backend/db/pool.js
-5. Setup .env file in backend/ _(file format is provided in .env.example)_
-6. npx nodemon server.js _(for development)_
-7. npm start _(for production)_
+4. npm install dotenv 
+5. Setup database connection in backend/db/pool.js
+6. Setup .env file in backend/ _(file format is provided in .env.example)_
+7. npx nodemon server.js _(for development)_
+8. npm install @aws-sdk/client-rekognition
+9. npm install @aws-sdk/client-s3
+10. npm start _(for production)_
 
 ### Frontend Setup
 1. cd frontend
 2. npm install 
 3. npm install axios
-3. npm start
+4. npm install aws-amplify @aws-amplify/ui-react @aws-amplify/ui-react-liveness
+5. npm install @aws-amplify/ui
+6. npm start
 
 
 This will launch the backend server and frontend application, allowing access to the instructor evaluation system via your browser.
