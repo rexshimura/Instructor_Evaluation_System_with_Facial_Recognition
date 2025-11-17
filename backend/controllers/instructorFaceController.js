@@ -1,5 +1,5 @@
 // backend/server/controllers/instructorFaceController.js
-import pool from '../db/pool.js'; 
+import pool from '../server/db/pool.js';
 import * as InstructorFace from '../models/instructorFaceModel.js';
 
 export const registerInstructorFace = async (req, res) => {

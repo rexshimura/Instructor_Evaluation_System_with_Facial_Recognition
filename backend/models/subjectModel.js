@@ -1,4 +1,4 @@
-import pool from '../db/pool.js';
+import pool from '../server/db/pool.js';
 
 export const createSubject = async (payload) => {
   const { rows } = await pool.query(

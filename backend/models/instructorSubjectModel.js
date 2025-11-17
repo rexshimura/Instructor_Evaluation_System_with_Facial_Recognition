@@ -1,4 +1,4 @@
-import pool from "../db/pool.js";
+import pool from '../server/db/pool.js';
 
 // Get all instructor-subject pairs
 export const getAllInstructorSubjects = async () => {

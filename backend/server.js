@@ -1,3 +1,4 @@
+// backend/server.js
 import 'dotenv/config'; // Loads .env file immediately
 import express from 'express';
 import session from 'express-session';
@@ -14,10 +15,11 @@ import instructorSubjectRoutes from './routes/instructorSubjectRoutes.js';
 import logRoutes from './routes/logRoutes.js';
 import studentSectionRoutes from './routes/studentSectionRoutes.js';
 import sectionSubjectInstructorRoutes from './routes/sectionSubjectInstructorRoutes.js';
-import instructorFaceRoutes from './routes/instructorFaceRoutes.js';
+// import instructorFaceRoutes from './routes/instructorFaceRoutes.js'; // REMOVED
+// import azureRoutes from './routes/azureRoutes.js'; // REMOVED
 
-// Import the new Azure-specific routes
-import azureRoutes from './routes/azureRoutes.js';
+// --- IMPORT THE NEW AWS REKOGNITION ROUTES ---
+import rekognitionRoutes from './routes/rekognitionRoutes.js';
 
 const app = express();
 
@@ -43,10 +45,11 @@ app.use('/instructor-subject', instructorSubjectRoutes);
 app.use('/logs', logRoutes);
 app.use('/student-sections', studentSectionRoutes);
 app.use('/section-assignments', sectionSubjectInstructorRoutes);
-app.use('/instructor-faces', instructorFaceRoutes);
+// app.use('/instructor-faces', instructorFaceRoutes); // REMOVED
+// app.use('/azure', azureRoutes); // REMOVED
 
-// Mount the new Azure Routes under the '/azure' path
-app.use('/azure', azureRoutes);
+// --- MOUNT THE NEW AWS REKOGNITION ROUTES ---
+app.use('/rekognition', rekognitionRoutes);
 
 
 // Health check
