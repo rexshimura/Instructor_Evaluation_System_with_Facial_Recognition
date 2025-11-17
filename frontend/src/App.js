@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import { Routes, Route } from "react-router-dom";
 
 import Landing from "./pages/Landing";
@@ -43,6 +43,12 @@ import InstructorFaceRec from "./pages/05-instructor/InstructorFaceRec";
 
 
 function App() {
+
+  // hook to change the Tab Title
+  useEffect(() => {
+    document.title = "( ✦ ) ProEv";
+  }, []);
+
   return (
 
     <Routes>
