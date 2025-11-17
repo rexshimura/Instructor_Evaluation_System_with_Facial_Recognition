@@ -1,175 +1,275 @@
-// src/InstructorFaceRec.js
-
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-    FaUserCircle,
-    FaSearch,
-    FaSync,
-    FaExclamationTriangle,
-    FaCamera,
-    FaIdCard,
-    FaUsers,
-    FaQrcode
-} from "react-icons/fa";
-import VerifyNavBar from "../../components/module_layout/VerifyNavBar";
-import { apiService } from "../../services/apiService";
+    FaceLivenessDetector,
+} from "@aws-amplify/ui-react-liveness";
+import { Loader } from "@aws-amplify/ui-react";
+import { FaCheck, FaExclamationTriangle, FaArrowLeft } from "react-icons/fa";
+import "@aws-amplify/ui-react/styles.css";
 
-export default function InstructorFaceRec() {
-    // State Hooks
-    const [selectedInstructorID, setSelectedInstructorID] = useState("");
-    const [instructors, setInstructors] = useState([]);
-    const [filteredInstructors, setFilteredInstructors] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
-    const [searchTerm, setSearchTerm] = useState("");
-    const [retryCount, setRetryCount] = useState(0);
-    const [actionLoading, setActionLoading] = useState(false);
-    const [faceRecognitionLoading, setFaceRecognitionLoading] = useState(false);
-    const [showManualSearch, setShowManualSearch] = useState(false);
-    const [cameraStream, setCameraStream] = useState(null);
-    const [detectedFaces, setDetectedFaces] = useState([]);
-    const [scanningStatus, setScanningStatus] = useState("ready");
+const BACKEND_URL = process.env.REACT_APP_API_URL || "http://localhost:5000/rekognition";
 
-    // Refs
-    const videoRef = useRef(null);
-    const canvasRef = useRef(null);
-
-    // Router
+function InstructorFaceRec() {
+    const [instructorID, setInstructorID] = useState("");
+    const [sessionId, setSessionId] = useState(null);
+    const [loading, setLoading] = useState(false);
+    const [verificationResult, setVerificationResult] = useState(null);
+    const [showLiveness, setShowLiveness] = useState(false);
     const navigate = useNavigate();
 
-    // Data Fetching
-    const fetchInstructors = async () => {
+    const handleStartLivenessCheck = async () => {
+        if (!instructorID.trim()) {
+            setVerificationResult({
+                status: "error",
+                message: "Please enter your Instructor ID first."
+            });
+            return;
+        }
+
+        setLoading(true);
+        setVerificationResult(null);
         try {
-            setLoading(true);
-            setError(null);
-            const data = await apiService.getInstructors();
-            if (!Array.isArray(data)) throw new Error("Invalid data format received from server");
-            setInstructors(data);
-            setFilteredInstructors(data);
-        } catch (err) {
-            console.error("Error fetching instructors:", err);
-            setError(err.message || "Failed to load instructors.");
-        } finally {
+            console.log("🔄 Creating liveness session...");
+            const response = await fetch(`${BACKEND_URL}/create-liveness-session`, {
+                method: "GET",
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.details || "Failed to create session");
+            }
+
+            const data = await response.json();
+            console.log("✅ Session created:", data.sessionId);
+            setSessionId(data.sessionId);
+            setShowLiveness(true);
+
+        } catch (error) {
+            console.error("❌ Error creating session:", error);
+            setVerificationResult({
+                status: "error",
+                message: `Error starting verification: ${error.message}`,
+            });
             setLoading(false);
         }
     };
 
-    // Effect for Initial Data Load
-    useEffect(() => {
-        fetchInstructors();
-    }, [retryCount]);
-
-    // Effect for Filtering Instructors
-    useEffect(() => {
-        if (searchTerm.trim() === "") {
-            setFilteredInstructors(instructors);
-        } else {
-            const filtered = instructors.filter(instructor =>
-                `${instructor.ins_fname} ${instructor.ins_lname} ${instructor.ins_dept} ${instructor.ins_id}`
-                    .toLowerCase().includes(searchTerm.toLowerCase().trim())
-            );
-            setFilteredInstructors(filtered);
-        }
-    }, [searchTerm, instructors]);
-
-    // Face Recognition Logic
-    const startFaceRecognition = async () => {
-        try {
-            setFaceRecognitionLoading(true);
-            setScanningStatus("scanning");
-            setError(null);
-            setDetectedFaces([]);
-
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { width: { ideal: 1280 }, height: { ideal: 720 }, facingMode: 'user' } });
-            setCameraStream(stream);
-            if (videoRef.current) videoRef.current.srcObject = stream;
-
-            startContinuousFaceDetection();
-        } catch (err) {
-            console.error("Camera access error:", err);
-            setError("Camera access denied.");
-            setFaceRecognitionLoading(false);
-            setScanningStatus("ready");
-            setShowManualSearch(true);
-        }
-    };
-
-    // Face Detection Loop
-    const startContinuousFaceDetection = () => {
-        const detectInterval = setInterval(async () => {
-            if (!videoRef.current || scanningStatus === "recognized") {
-                clearInterval(detectInterval);
-                return;
-            }
-            try {
-                await captureAndIdentify();
-            } catch (error) {
-                console.error("Recognition cycle error:", error);
-            }
-        }, 2000);
-    };
-
-    // Image Capture and API Call
-    const captureAndIdentify = async () => {
-        if (!videoRef.current || videoRef.current.paused || videoRef.current.ended) return;
+    const handleAnalysisComplete = async () => {
+        setShowLiveness(false);
+        setLoading(true);
 
         try {
-            const canvas = document.createElement('canvas');
-            canvas.width = videoRef.current.videoWidth;
-            canvas.height = videoRef.current.videoHeight;
-            canvas.getContext('2d').drawImage(videoRef.current, 0, 0);
+            console.log("🔄 Getting verification results...");
+            const response = await fetch(`${BACKEND_URL}/get-verification-result`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    sessionId: sessionId,
+                    instructorID: instructorID
+                }),
+            });
 
-            const base64Image = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
-            const result = await apiService.identifyFace(base64Image);
+            const data = await response.json();
+            console.log("📋 Verification API Response:", {
+                status: response.status,
+                statusText: response.statusText,
+                data: data
+            });
 
-            if (result.success && result.matches.length > 0) {
-                const match = result.matches[0];
-                console.log("✅ Azure Identified:", match.name, "ID:", match.userData);
+            if (response.ok && data.isMatch) {
+                setVerificationResult({
+                    status: "success",
+                    message: `Welcome, ${data.instructor.ins_fname} ${data.instructor.ins_lname}!`,
+                    details: `Match Confidence: ${data.confidence.toFixed(2)}%`,
+                    instructor: data.instructor
+                });
 
-                setScanningStatus("recognized");
+                console.log("✅ Instructor Verified:", data.instructor);
 
-                const instructor = instructors.find(ins => ins.ins_id.toString() === match.userData);
+                setTimeout(() => {
+                    navigate(`/instructor-profile/${data.instructor.ins_id}`);
+                }, 3000);
 
-                if (instructor) {
-                    setTimeout(() => {
-                        setFaceRecognitionLoading(false);
-                        stopCamera();
-                        navigate(`/instructor-profile/${instructor.ins_id}`, {
-                            state: {
-                                recognized: true,
-                                method: 'face_recognition',
-                                confidence: match.confidence,
-                                personId: match.personId
-                            }
-                        });
-                    }, 1500);
-                } else {
-                    setError("Face recognized by Azure, but instructor data not found locally.");
-                }
             } else {
-                setScanningStatus("scanning");
+                console.error("❌ Verification failed:", data);
+                setVerificationResult({
+                    status: "error",
+                    message: data.error || "Verification failed. Please try again.",
+                    details: data.details || ''
+                });
             }
 
         } catch (error) {
-            console.error("Azure identification error:", error);
+            console.error("❌ Error getting results:", error);
+            setVerificationResult({
+                status: "error",
+                message: "Network error. Please check your connection and try again.",
+            });
         }
+
+        setLoading(false);
+        setSessionId(null);
     };
 
-    // Utility Functions
-    const stopCamera = () => {
-        if (cameraStream) {
-            cameraStream.getTracks().forEach(track => track.stop());
-            setCameraStream(null);
-        }
-        if (videoRef.current) videoRef.current.srcObject = null;
+    const handleError = (error) => {
+        console.error("❌ Liveness component error:", error);
+        setVerificationResult({
+            status: "error",
+            message: `Liveness check failed: ${error.message}. Please try again.`,
+        });
+        setLoading(false);
+        setShowLiveness(false);
+        setSessionId(null);
     };
 
-    // Render
+    const handleRetry = () => {
+        setVerificationResult(null);
+        setInstructorID("");
+        setSessionId(null);
+        setShowLiveness(false);
+    };
+
+    const handleBack = () => {
+        navigate(-1); // Go back to previous page
+    };
+
+    // Render result with better UI
+    const renderResult = () => {
+        if (!verificationResult) return null;
+
+        const isSuccess = verificationResult.status === 'success';
+
+        return (
+            <div className={`p-6 rounded-lg mt-6 ${
+                isSuccess ? 'bg-green-50 border border-green-200' : 'bg-red-50 border border-red-200'
+            }`}>
+                <div className="flex items-center gap-3 mb-3">
+                    {isSuccess ? (
+                        <FaCheck className="text-green-600 text-2xl" />
+                    ) : (
+                        <FaExclamationTriangle className="text-red-600 text-2xl" />
+                    )}
+                    <h2 className={`text-xl font-bold ${isSuccess ? 'text-green-800' : 'text-red-800'}`}>
+                        {verificationResult.message}
+                    </h2>
+                </div>
+
+                {verificationResult.details && (
+                    <p className={`${isSuccess ? 'text-green-700' : 'text-red-700'} mb-3`}>
+                        {verificationResult.details}
+                    </p>
+                )}
+
+                {isSuccess ? (
+                    <div className="text-green-700">
+                        <p>Redirecting to your profile...</p>
+                        <div className="mt-2 w-full bg-green-200 rounded-full h-2">
+                            <div className="bg-green-600 h-2 rounded-full animate-pulse"></div>
+                        </div>
+                    </div>
+                ) : (
+                    <div className="flex gap-3 mt-4">
+                        <button
+                            onClick={handleRetry}
+                            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                        >
+                            Try Again
+                        </button>
+                        <button
+                            onClick={handleBack}
+                            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition"
+                        >
+                            Go Back
+                        </button>
+                    </div>
+                )}
+            </div>
+        );
+    };
+
     return (
-        <div className="min-h-screen bg-gray-100 flex flex-col items-center p-6">
-            <VerifyNavBar />
-            {/* ... rest of your UI ... */}
+        <div className="min-h-screen bg-gray-100 flex flex-col">
+            {/* Navigation */}
+            <div className="bg-white shadow-sm">
+                <div className="max-w-4xl mx-auto px-6 py-4">
+                    <button
+                        onClick={handleBack}
+                        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition"
+                    >
+                        <FaArrowLeft /> Back
+                    </button>
+                </div>
+            </div>
+
+            {/* Main Content */}
+            <div className="flex-1 flex items-center justify-center p-6">
+                <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8">
+                    <h1 className="text-3xl font-bold text-gray-800 mb-2 text-center">
+                        Instructor Verification
+                    </h1>
+                    <p className="text-gray-600 text-center mb-8">
+                        Complete a quick liveness check to verify your identity
+                    </p>
+
+                    {loading && (
+                        <div className="text-center py-8">
+                            <Loader size="large" />
+                            <p className="text-gray-600 mt-4">Processing verification...</p>
+                        </div>
+                    )}
+
+                    {!loading && !showLiveness && !verificationResult && (
+                        <>
+                            <div className="mb-6">
+                                <label htmlFor="instructorID" className="block text-lg font-bold text-gray-700 mb-3 text-left">
+                                    Enter Your Instructor ID
+                                </label>
+                                <input
+                                    type="text"
+                                    id="instructorID"
+                                    value={instructorID}
+                                    onChange={(e) => setInstructorID(e.target.value)}
+                                    placeholder="e.g., 1020002"
+                                    className="w-full p-4 border border-gray-300 rounded-lg text-center text-xl focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition"
+                                    disabled={loading}
+                                />
+                            </div>
+
+                            <button
+                                onClick={handleStartLivenessCheck}
+                                disabled={loading || !instructorID.trim()}
+                                className="w-full py-4 bg-green-600 text-white font-bold rounded-lg hover:bg-green-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition text-lg"
+                            >
+                                Start Verification
+                            </button>
+                        </>
+                    )}
+
+                    {renderResult()}
+
+                    {showLiveness && sessionId && (
+                        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                            <div className="bg-white rounded-lg p-4 max-w-2xl w-full mx-4">
+                                <FaceLivenessDetector
+                                    sessionId={sessionId}
+                                    region="us-east-1"
+                                    onAnalysisComplete={handleAnalysisComplete}
+                                    onError={handleError}
+                                    config={{
+                                        "face-liveness-detector": {
+                                            showStartScreen: false
+                                        }
+                                    }}
+                                />
+                            </div>
+                        </div>
+                    )}
+                </div>
+            </div>
         </div>
     );
 }
+
+export default InstructorFaceRec;

@@ -1,5 +1,5 @@
 // models/instructorFaceModel.js
-import pool from '../db/pool.js';
+import pool from '../server/db/pool.js';
 
 export const createInstructorFace = async (payload) => {
   const { rows } = await pool.query(
