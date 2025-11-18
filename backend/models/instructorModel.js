@@ -1,8 +1,13 @@
 import pool from '../server/db/pool.js';
 
 export const createInstructor = async (payload) => {
+  // FIXED: Use direct INSERT query instead of non-existent function
   const q = `
-    SELECT * FROM instructor_create($1,$2,$3,$4,$5,$6,$7,$8,$9);
+    INSERT INTO instructor (
+      ins_fname, ins_mname, ins_lname, ins_suffix, ins_dob,
+      ins_sex, ins_email, ins_contact, ins_dept
+    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+    RETURNING *;
   `;
   const vals = [
     payload.ins_fname,

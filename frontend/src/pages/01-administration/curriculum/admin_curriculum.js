@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { FiEdit, FiTrash2, FiPlus, FiFilter, FiSearch, FiRefreshCw } from "react-icons/fi";
+import { FiEdit, FiTrash2, FiPlus, FiFilter, FiSearch, FiRefreshCw, FiChevronLeft, FiChevronRight } from "react-icons/fi";
 import axios from "axios";
 
 // Component and Data Imports
@@ -17,6 +17,8 @@ export default function AdminCurriculum() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [subjectToEdit, setSubjectToEdit] = useState(null);
   const [toast, setToast] = useState({ show: false, message: "", type: "info" });
+  
+  // Filter & Search State
   const [filters, setFilters] = useState({ 
     course: "All", 
     prefix: "All", 
@@ -25,6 +27,11 @@ export default function AdminCurriculum() {
     units: "All" 
   });
   const [searchQuery, setSearchQuery] = useState("");
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10); // Change this number to show more/less rows
+
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -50,6 +57,11 @@ export default function AdminCurriculum() {
   useEffect(() => {
     fetchSubjects();
   }, []);
+
+  // Pagination Fix: Reset to page 1 whenever filters or search change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters, searchQuery]);
 
   // Effect to synchronize the modal's visibility with the URL.
   useEffect(() => {
@@ -108,6 +120,14 @@ export default function AdminCurriculum() {
     });
   }, [subjects, filters, searchQuery]);
 
+  // --- Pagination Calculation ---
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentSubjects = filteredSubjects.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredSubjects.length / itemsPerPage);
+
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
+
   // Handle filter changes
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
@@ -122,11 +142,7 @@ export default function AdminCurriculum() {
   // Clear all filters
   const clearFilters = () => {
     setFilters({
-      course: "All",
-      prefix: "All", 
-      year: "All",
-      semester: "All",
-      units: "All"
+      course: "All", prefix: "All", year: "All", semester: "All", units: "All"
     });
     setSearchQuery("");
   };
@@ -161,16 +177,12 @@ export default function AdminCurriculum() {
       showToast("A new subject has been added successfully!");
     } catch (error) {
       console.error("Error adding subject:", error);
-      
-      // Handle specific backend validation errors
       if (error.response?.status === 400) {
         const errorMessage = error.response.data?.error || "Failed to add subject";
         showToast(errorMessage, "error");
       } else {
         showToast("Failed to add subject", "error");
       }
-      
-      // Re-throw the error so the AddSubjectModal can handle it too
       throw error;
     }
   };
@@ -184,8 +196,6 @@ export default function AdminCurriculum() {
       showToast("Subject updated successfully!");
     } catch (error) {
       console.error("Error updating subject:", error);
-      
-      // Handle specific backend validation errors
       if (error.response?.status === 400) {
         const errorMessage = error.response.data?.error || "Failed to update subject";
         showToast(errorMessage, "error");
@@ -194,8 +204,6 @@ export default function AdminCurriculum() {
       } else {
         showToast("Failed to update subject", "error");
       }
-      
-      // Re-throw the error so the EditSubjectModal can handle it too
       throw error;
     }
   };
@@ -209,8 +217,6 @@ export default function AdminCurriculum() {
         showToast(`Subject "${subjectName}" was deleted.`, 'error');
       } catch (error) {
         console.error("Error deleting subject:", error);
-        
-        // Handle specific backend errors
         if (error.response?.status === 404) {
           showToast("Subject not found", "error");
         } else if (error.response?.status === 500) {
@@ -222,7 +228,6 @@ export default function AdminCurriculum() {
     }
   };
 
-  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col">
@@ -250,7 +255,7 @@ export default function AdminCurriculum() {
         />
       )}
 
-      <main className="flex-1 flex flex-col p-4 md:p-8 gap-6 overflow-hidden">
+      <main className="flex-1 flex flex-col p-4 md:p-8 gap-6 overflow-hidden max-w-7xl mx-auto w-full">
         {/* Header Section */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
@@ -279,6 +284,7 @@ export default function AdminCurriculum() {
 
         {/* Filter & Search Card */}
         <div className="p-4 bg-white rounded-xl shadow-md border border-gray-200">
+          {/* ... Search and Filter Inputs (Kept same as original) ... */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
             <div className="flex items-center">
               <FiFilter className="text-gray-500 mr-2" />
@@ -307,12 +313,7 @@ export default function AdminCurriculum() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Course</label>
-              <select 
-                name="course" 
-                value={filters.course} 
-                onChange={handleFilterChange} 
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-              >
+              <select name="course" value={filters.course} onChange={handleFilterChange} className="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
                 <option value="All">All Courses</option>
                 <option value="BSIT">BSIT</option>
                 <option value="BSIS">BSIS</option>
@@ -322,43 +323,23 @@ export default function AdminCurriculum() {
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Prefix</label>
-              <select 
-                name="prefix" 
-                value={filters.prefix} 
-                onChange={handleFilterChange} 
-                disabled={filters.course === "All"} 
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed"
-              >
+              <select name="prefix" value={filters.prefix} onChange={handleFilterChange} disabled={filters.course === "All"} className="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 disabled:bg-gray-100 disabled:cursor-not-allowed">
                 <option value="All">All Prefixes</option>
-                {coursePrefixes.map(p => (
-                  <option key={p} value={p}>{p}</option>
-                ))}
+                {coursePrefixes.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
-              <select 
-                name="year" 
-                value={filters.year} 
-                onChange={handleFilterChange} 
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-              >
+              <select name="year" value={filters.year} onChange={handleFilterChange} className="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
                 <option value="All">All Years</option>
-                {[1, 2, 3, 4].map(y => (
-                  <option key={y} value={y}>{y} Year</option>
-                ))}
+                {[1, 2, 3, 4].map(y => <option key={y} value={y}>{y} Year</option>)}
               </select>
             </div>
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Semester</label>
-              <select 
-                name="semester" 
-                value={filters.semester} 
-                onChange={handleFilterChange} 
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-              >
+              <select name="semester" value={filters.semester} onChange={handleFilterChange} className="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
                 <option value="All">All Semesters</option>
                 <option value="1">1st Semester</option>
                 <option value="2">2nd Semester</option>
@@ -367,16 +348,9 @@ export default function AdminCurriculum() {
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Units</label>
-              <select 
-                name="units" 
-                value={filters.units} 
-                onChange={handleFilterChange} 
-                className="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500"
-              >
+              <select name="units" value={filters.units} onChange={handleFilterChange} className="w-full p-2 border border-gray-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500">
                 <option value="All">All Units</option>
-                {availableUnits.map(u => (
-                  <option key={u} value={u}>{u} Unit{u !== 1 ? 's' : ''}</option>
-                ))}
+                {availableUnits.map(u => <option key={u} value={u}>{u} Unit{u !== 1 ? 's' : ''}</option>)}
               </select>
             </div>
           </div>
@@ -384,71 +358,41 @@ export default function AdminCurriculum() {
 
         {/* Subjects Table */}
         <div className="flex-1 bg-white shadow-lg rounded-xl overflow-hidden border border-gray-200 flex flex-col">
-          <div className="overflow-auto flex-1">
+          <div className="overflow-x-auto flex-1">
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-100 sticky top-0 z-10">
+              <thead className="bg-gray-100">
                 <tr>
                   {["ID", "MIS Code", "Subject Name", "Course", "Year", "Sem", "Units", "Actions"].map(header => (
-                    <th 
-                      key={header} 
-                      scope="col" 
-                      className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider"
-                    >
+                    <th key={header} scope="col" className="px-4 py-3 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
                       {header}
                     </th>
                   ))}
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredSubjects.length > 0 ? (
-                  filteredSubjects.map((subject) => (
+                {currentSubjects.length > 0 ? (
+                  currentSubjects.map((subject) => (
                     <tr key={subject.sub_id} className="hover:bg-gray-50 transition-colors">
-                      <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-800">
-                        {subject.sub_id}
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm font-mono text-gray-800">
-                        {subject.sub_miscode || 'N/A'}
-                      </td>
-                      <td 
-                        className="px-4 py-4 text-sm text-gray-700 max-w-xs truncate" 
-                        title={subject.sub_name}
-                      >
-                        {subject.sub_name}
-                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm font-medium text-gray-800">{subject.sub_id}</td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm font-mono text-gray-800">{subject.sub_miscode || 'N/A'}</td>
+                      <td className="px-4 py-4 text-sm text-gray-700 max-w-xs truncate" title={subject.sub_name}>{subject.sub_name}</td>
                       <td className="px-4 py-4 whitespace-nowrap">
                         <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                          subject.sub_course === 'BSIT' 
-                            ? 'bg-blue-100 text-blue-800' 
-                            : subject.sub_course === 'BSIS'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-purple-100 text-purple-800'
+                          subject.sub_course === 'BSIT' ? 'bg-blue-100 text-blue-800' : 
+                          subject.sub_course === 'BSIS' ? 'bg-green-100 text-green-800' : 'bg-purple-100 text-purple-800'
                         }`}>
                           {subject.sub_course}
                         </span>
                       </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-center text-gray-500">
-                        {subject.sub_year}
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-center text-gray-500">
-                        {subject.sub_semester}
-                      </td>
-                      <td className="px-4 py-4 whitespace-nowrap text-sm text-center text-gray-500 font-medium">
-                        {subject.sub_units || 'N/A'}
-                      </td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-center text-gray-500">{subject.sub_year}</td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-center text-gray-500">{subject.sub_semester}</td>
+                      <td className="px-4 py-4 whitespace-nowrap text-sm text-center text-gray-500 font-medium">{subject.sub_units || 'N/A'}</td>
                       <td className="px-4 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end space-x-2">
-                          <button 
-                            onClick={() => handleOpenEditModal(subject)} 
-                            className="p-2 text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors" 
-                            title="Edit Subject"
-                          >
+                          <button onClick={() => handleOpenEditModal(subject)} className="p-2 text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors" title="Edit Subject">
                             <FiEdit size={16}/>
                           </button>
-                          <button 
-                            onClick={() => handleDeleteSubject(subject.sub_id, subject.sub_name)} 
-                            className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors" 
-                            title="Delete Subject"
-                          >
+                          <button onClick={() => handleDeleteSubject(subject.sub_id, subject.sub_name)} className="p-2 text-red-600 bg-red-50 rounded-lg hover:bg-red-100 transition-colors" title="Delete Subject">
                             <FiTrash2 size={16}/>
                           </button>
                         </div>
@@ -475,13 +419,49 @@ export default function AdminCurriculum() {
             </table>
           </div>
           
-          {/* Table Footer */}
+          {/* Pagination Footer */}
           {filteredSubjects.length > 0 && (
-            <div className="bg-gray-50 px-4 py-3 border-t border-gray-200">
-              <p className="text-sm text-gray-600">
-                Showing <span className="font-semibold">{filteredSubjects.length}</span> of{' '}
-                <span className="font-semibold">{subjects.length}</span> subjects
-              </p>
+            <div className="bg-gray-50 px-4 py-3 border-t border-gray-200 flex items-center justify-between sm:px-6">
+              <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                <div>
+                  <p className="text-sm text-gray-700">
+                    Showing <span className="font-medium">{indexOfFirstItem + 1}</span> to <span className="font-medium">{Math.min(indexOfLastItem, filteredSubjects.length)}</span> of <span className="font-medium">{filteredSubjects.length}</span> subjects
+                  </p>
+                </div>
+                <div>
+                  <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                    <button
+                      onClick={() => paginate(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-50'}`}
+                    >
+                      <span className="sr-only">Previous</span>
+                      <FiChevronLeft className="h-5 w-5" aria-hidden="true" />
+                    </button>
+                    
+                    {/* Page Indicator */}
+                    <div className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                      Page {currentPage} of {totalPages}
+                    </div>
+
+                    <button
+                      onClick={() => paginate(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium ${currentPage === totalPages ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-50'}`}
+                    >
+                      <span className="sr-only">Next</span>
+                      <FiChevronRight className="h-5 w-5" aria-hidden="true" />
+                    </button>
+                  </nav>
+                </div>
+              </div>
+              
+              {/* Mobile Pagination View */}
+              <div className="flex sm:hidden justify-between w-full">
+                <button onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1} className="px-4 py-2 border rounded text-sm font-medium disabled:opacity-50 bg-white">Previous</button>
+                <span className="text-sm py-2 text-gray-600">Page {currentPage}</span>
+                <button onClick={() => paginate(currentPage + 1)} disabled={currentPage === totalPages} className="px-4 py-2 border rounded text-sm font-medium disabled:opacity-50 bg-white">Next</button>
+              </div>
             </div>
           )}
         </div>
