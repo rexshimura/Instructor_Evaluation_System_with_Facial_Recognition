@@ -2,8 +2,11 @@
 import pool from '../server/db/pool.js';
 
 export const createSection = async (payload) => {
+  // FIXED: Use direct INSERT query instead of non-existent function
   const { rows } = await pool.query(
-    'SELECT * FROM section_create($1,$2,$3,$4,$5);',  // ✅ 5 parameters
+    `INSERT INTO section_table (
+      sect_semester, sect_name, sect_year_level, sect_school_year, sect_course
+    ) VALUES ($1, $2, $3, $4, $5) RETURNING *;`,
     [
       payload.sect_semester,
       payload.sect_name,

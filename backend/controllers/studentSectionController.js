@@ -3,13 +3,13 @@ import * as StudentSection from '../models/studentSectionModel.js';
 
 export const assignStudentToSection = async (req, res) => {
   try {
-    const { sect_id, stud_id } = req.body;
+    const { section_id, stud_id } = req.body;
     
-    if (!sect_id || !stud_id) {
+    if (!section_id || !stud_id) {
       return res.status(400).json({ error: 'Section ID and Student ID are required' });
     }
 
-    const assignment = await StudentSection.createStudentSection(sect_id, stud_id);
+    const assignment = await StudentSection.createStudentSection(section_id, stud_id);
     res.status(201).json({ 
       message: 'Student assigned to section successfully', 
       assignment 

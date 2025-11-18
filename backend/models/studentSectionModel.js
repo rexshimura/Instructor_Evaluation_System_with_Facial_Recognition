@@ -2,8 +2,9 @@
 import pool from '../server/db/pool.js';
 
 export const createStudentSection = async (sect_id, stud_id) => {
+  // FIXED: Use direct INSERT query instead of non-existent function
   const { rows } = await pool.query(
-    'SELECT * FROM student_section_create($1, $2);',
+    'INSERT INTO student_section (section_id, stud_id) VALUES ($1, $2) RETURNING *;',
     [sect_id, stud_id]
   );
   return rows[0];
@@ -67,5 +68,6 @@ export const getStudentsBySection = async (sectionId) => {
 };
 
 export const deleteStudentSection = async (id) => {
-  await pool.query('SELECT student_section_delete($1);', [id]);
+  // FIXED: Use direct DELETE query instead of non-existent function
+  await pool.query('DELETE FROM student_section WHERE studSect_id = $1;', [id]);
 };
