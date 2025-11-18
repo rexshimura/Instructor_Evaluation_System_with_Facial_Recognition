@@ -101,9 +101,8 @@ export default function ModeratorNavBar() {
 
             {/* LEFT: Logo & Desktop Nav */}
             <div className="flex items-center gap-8">
-              {/* UPDATED LOGO TEXT */}
               <h1 className="font-bold text-xl tracking-wide flex items-center gap-2">
-                  Moderator Panel
+                Moderator Panel
               </h1>
 
               {/* DESKTOP MENU - Hidden until Large Screen (lg:flex) */}
@@ -121,7 +120,10 @@ export default function ModeratorNavBar() {
                   </button>
 
                   {activeDropdown === 'instructors' && (
-                    <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-lg shadow-xl py-1 animate-slide-up overflow-hidden border border-blue-100">
+                    <div
+                      className="absolute top-full left-0 mt-2 w-56 bg-white rounded-lg shadow-xl py-1 animate-slide-up overflow-hidden border border-blue-100"
+                      style={{ animationDuration: '0.2s' }} // <--- FAST ANIMATION
+                    >
                       {instructorGroup.map((item, idx) => <DropdownLink key={idx} item={item} />)}
                     </div>
                   )}
@@ -137,7 +139,10 @@ export default function ModeratorNavBar() {
                   </button>
 
                   {activeDropdown === 'management' && (
-                    <div className="absolute top-full left-0 mt-2 w-56 bg-white rounded-lg shadow-xl py-1 animate-slide-up overflow-hidden border border-blue-100">
+                    <div
+                      className="absolute top-full left-0 mt-2 w-56 bg-white rounded-lg shadow-xl py-1 animate-slide-up overflow-hidden border border-blue-100"
+                      style={{ animationDuration: '0.2s' }} // <--- FAST ANIMATION
+                    >
                       {managementGroup.map((item, idx) => <DropdownLink key={idx} item={item} />)}
                     </div>
                   )}
@@ -171,9 +176,9 @@ export default function ModeratorNavBar() {
           </div>
         </div>
 
-        {/* MOBILE SLIDE-OUT MENU - Shown on screens smaller than Large (lg:hidden) */}
+        {/* MOBILE SLIDE-OUT MENU */}
         <div
-          className={`fixed inset-y-0 right-0 w-64 bg-white shadow-2xl transform transition-transform duration-300 ease-in-out z-50 lg:hidden flex flex-col ${
+          className={`fixed inset-y-0 right-0 w-64 bg-white shadow-2xl transform transition-transform duration-200 ease-in-out z-50 lg:hidden flex flex-col ${
             isMobileMenuOpen ? "translate-x-0" : "translate-x-full"
           }`}
         >
