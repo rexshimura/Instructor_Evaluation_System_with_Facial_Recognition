@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import LoadingOverlay from '../../components/module_feedback/LoadingOverlay';
 import ScoreSelector from '../../components/module_selector/ScoreSelector';
@@ -21,7 +21,7 @@ const categoryDetails = {
 // Map category names to database column names
 const categoryToDbMap = {
   "Course Organization and Content": "C1",
-  "Instructor's Knowledge and Presentation": "C2", 
+  "Instructor's Knowledge and Presentation": "C2",
   "Communication and Interaction": "C3",
   "Assessment and Feedback": "C4",
   "Overall Effectiveness": "C5"
@@ -31,15 +31,19 @@ export default function EvaluationForm() {
   const { instructorID, subjectID } = useParams();
   const navigate = useNavigate();
 
-  // Memoize student data to prevent unnecessary re-renders
+  // 1. REF FOR SCROLL TRACKING
+  const evalSectionRef = useRef(null);
+  const [showSticky, setShowSticky] = useState(false);
+
+  // Memoize student data
   const student = useMemo(() => {
     const userString = sessionStorage.getItem("user");
     return userString ? JSON.parse(userString) : null;
   }, []);
 
-  // Flatten the questions to initialize the scores state
-  const allQuestions = useMemo(() => 
-    evaluationQuestions.flatMap(category => category.questions), 
+  // Flatten questions
+  const allQuestions = useMemo(() =>
+    evaluationQuestions.flatMap(category => category.questions),
   []);
 
   const [scores, setScores] = useState(
@@ -52,8 +56,22 @@ export default function EvaluationForm() {
   const [subject, setSubject] = useState(null);
   const [error, setError] = useState(null);
 
+  // 2. SCROLL LISTENER EFFECT
   useEffect(() => {
-    // Fetch instructor and subject data
+    const handleScroll = () => {
+      if (evalSectionRef.current) {
+        const rect = evalSectionRef.current.getBoundingClientRect();
+        // Show sticky bar when the evaluation section title is near the top of viewport (or scrolled past)
+        // We use < 150 to make it appear just as the user starts reading the questions
+        setShowSticky(rect.top < 150);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  useEffect(() => {
     const fetchData = async () => {
       if (!instructorID || !subjectID) {
         setError("Missing instructor or subject information");
@@ -63,7 +81,7 @@ export default function EvaluationForm() {
       try {
         setIsLoading(true);
         setError(null);
-        
+
         const [instrRes, subRes] = await Promise.all([
           axios.get(`/instructors/${instructorID}`),
           axios.get(`/subjects/${subjectID}`)
@@ -86,19 +104,18 @@ export default function EvaluationForm() {
     setScores(prev => ({ ...prev, [questionId]: score }));
   };
 
-  // Calculate if form is valid
+  // Calculations
   const isFormValid = useMemo(() => {
     const allQuestionsAnswered = Object.values(scores).every(score => score > 0);
     return allQuestionsAnswered && student;
   }, [scores, student]);
 
-  // Calculate category scores
   const categoryScores = useMemo(() => {
     const scoresObj = {};
     evaluationQuestions.forEach(category => {
       const categoryQuestionIds = category.questions.map(q => q.id);
       const categoryScoreValues = categoryQuestionIds.map(id => scores[id]).filter(score => score > 0);
-      
+
       if (categoryScoreValues.length > 0) {
         const average = categoryScoreValues.reduce((sum, score) => sum + score, 0) / categoryScoreValues.length;
         const dbColumn = categoryToDbMap[category.category];
@@ -111,16 +128,14 @@ export default function EvaluationForm() {
     return scoresObj;
   }, [scores]);
 
-  // Calculate total rating
   const totalRating = useMemo(() => {
     const validScores = Object.values(categoryScores).filter(score => score > 0);
     if (validScores.length === 0) return 0;
-    
+
     const total = validScores.reduce((sum, score) => sum + score, 0);
     return parseFloat((total / validScores.length).toFixed(3));
   }, [categoryScores]);
 
-  // Calculate completion percentage - MOVED BEFORE ANY CONDITIONAL RETURNS
   const completionPercentage = useMemo(() => {
     const answered = Object.values(scores).filter(score => score > 0).length;
     return Math.round((answered / allQuestions.length) * 100);
@@ -134,18 +149,17 @@ export default function EvaluationForm() {
         alert("⚠️ Please log in to submit evaluation.");
         return;
       }
-      
+
       const unansweredCount = Object.values(scores).filter(score => score === 0).length;
       alert(`⚠️ Please answer all ${unansweredCount} remaining evaluation questions before submitting.`);
       return;
     }
 
-    // Check evaluation eligibility before submitting
     try {
       const eligibilityRes = await axios.get(
         `/evaluations/check-eligibility/${student.stud_id}/${instructorID}/${subjectID}`
       );
-      
+
       if (!eligibilityRes.data.canEvaluate) {
         alert("❌ You are not eligible to evaluate this instructor for this subject, or you have already submitted an evaluation.");
         return;
@@ -156,7 +170,6 @@ export default function EvaluationForm() {
       return;
     }
 
-    // Prepare evaluation data according to your database schema
     const evaluationData = {
       sub_id: parseInt(subjectID),
       stud_id: parseInt(student.stud_id),
@@ -174,12 +187,12 @@ export default function EvaluationForm() {
     try {
       setIsSubmitting(true);
       const res = await axios.post("/evaluations", evaluationData);
-      
+
       alert(res.data.message || "✅ Evaluation submitted successfully!");
       navigate("/home");
     } catch (err) {
       console.error("Submission error:", err);
-      
+
       if (err.response?.data?.error) {
         alert(`❌ Failed to submit evaluation: ${err.response.data.error}`);
       } else if (err.code === 'NETWORK_ERROR') {
@@ -192,51 +205,12 @@ export default function EvaluationForm() {
     }
   };
 
-  // Show loading state
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingOverlay message="Loading evaluation form..." />
-      </div>
-    );
-  }
+  if (isLoading) return <div className="min-h-screen flex items-center justify-center"><LoadingOverlay message="Loading evaluation form..." /></div>;
+  if (error) return <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100"><div className="bg-white p-8 rounded-lg shadow-lg text-center max-w-md"><h2 className="text-2xl font-bold text-gray-800 mb-4">Error</h2><p className="text-gray-600 mb-6">{error}</p><button onClick={() => window.history.back()} className="bg-blue-500 text-white px-6 py-2 rounded-lg">Go Back</button></div></div>;
+  if (!instructor || !subject) return <div className="min-h-screen flex items-center justify-center"><LoadingOverlay message="Preparing form..." /></div>;
 
-  // Show error state
-  if (error) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100">
-        <EvaluationFormNavBar />
-        <div className="bg-white p-8 rounded-lg shadow-lg text-center max-w-md">
-          <div className="text-red-500 text-6xl mb-4">⚠️</div>
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">Error Loading Form</h2>
-          <p className="text-gray-600 mb-6">{error}</p>
-          <button
-            onClick={() => window.history.back()}
-            className="bg-blue-500 text-white px-6 py-2 rounded-lg hover:bg-blue-600 transition-colors"
-          >
-            Go Back
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  // Show form not ready state
-  if (!instructor || !subject) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <LoadingOverlay message="Preparing evaluation form..." />
-      </div>
-    );
-  }
-
-  const redactedEmail = instructor.ins_email ? 
-    `${instructor.ins_email.substring(0, 3)}***@***${instructor.ins_email.split('@')[1]}` : 
-    'N/A';
-    
-  const redactedContact = instructor.ins_contact ? 
-    `${instructor.ins_contact.substring(0, 2)}***${instructor.ins_contact.substring(instructor.ins_contact.length - 2)}` : 
-    'N/A';
+  const redactedEmail = instructor.ins_email ? `${instructor.ins_email.substring(0, 3)}***@***${instructor.ins_email.split('@')[1]}` : 'N/A';
+  const redactedContact = instructor.ins_contact ? `${instructor.ins_contact.substring(0, 2)}***${instructor.ins_contact.substring(instructor.ins_contact.length - 2)}` : 'N/A';
 
   return (
     <div className="bg-gray-100 min-h-screen flex flex-col">
@@ -246,23 +220,33 @@ export default function EvaluationForm() {
 
       <EvaluationFormNavBar />
 
-      <div className="flex-1 flex flex-col items-center p-6">
+      <div className="flex-1 flex flex-col items-center p-6 relative">
         <h1 className="text-3xl font-bold mb-2 text-gray-800">Evaluate an Instructor</h1>
-        
-        {/* Progress Indicator */}
-        <div className="w-full max-w-2xl mb-6">
-          <div className="bg-white rounded-lg shadow p-4">
+
+        {/* --- POP-OUT PROGRESS INDICATOR ---
+            1. 'fixed': Takes it out of normal flow.
+            2. 'top-24': Pushes it down approx 96px from top (adjusts for navbar).
+            3. 'transition/transform': Handles the slide-down animation.
+        */}
+        <div
+          className={`fixed top-24 left-1/2 transform -translate-x-1/2 w-full max-w-2xl z-40 transition-all duration-500 ease-out px-4 ${
+            showSticky 
+              ? 'opacity-100 translate-y-0' 
+              : 'opacity-0 -translate-y-10 pointer-events-none'
+          }`}
+        >
+          <div className="bg-white rounded-lg shadow-xl p-4 border border-blue-200 ring-4 ring-blue-50/50">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-sm font-medium text-gray-700">
+              <span className="text-sm font-bold text-blue-800">
                 Form Completion: {completionPercentage}%
               </span>
-              <span className="text-sm text-gray-500">
-                {Object.values(scores).filter(score => score > 0).length} of {allQuestions.length} questions answered
+              <span className="text-xs text-gray-500 font-medium">
+                {Object.values(scores).filter(score => score > 0).length} / {allQuestions.length} Answered
               </span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-blue-500 h-2 rounded-full transition-all duration-300" 
+            <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+              <div
+                className="bg-gradient-to-r from-blue-400 to-blue-600 h-2.5 rounded-full transition-all duration-500 ease-out"
                 style={{ width: `${completionPercentage}%` }}
               ></div>
             </div>
@@ -271,7 +255,7 @@ export default function EvaluationForm() {
 
         <form onSubmit={handleSubmit} className="w-full max-w-2xl">
           {/* Instructor and Subject Info Card */}
-          <div className="bg-white shadow-lg rounded-lg p-6 w-full mb-8">
+          <div className="bg-white shadow-lg rounded-lg p-6 w-full mb-8 relative z-10">
             <div className="flex items-center space-x-4 mb-4 pb-4 border-b border-gray-200">
               <img
                 src="/profiles/profile-default.png"
@@ -309,16 +293,18 @@ export default function EvaluationForm() {
             </div>
           </div>
 
-          {/* Evaluation Questions by Category */}
-          <div className="bg-white shadow-lg rounded-lg p-6 mb-8">
+          {/* --- EVALUATION SECTION HEADER (Trigger Point) ---
+             We attach the Ref here. Once this scrolls near top, the popup appears.
+          */}
+          <div ref={evalSectionRef} className="bg-white shadow-lg rounded-lg p-6 mb-8">
             <h3 className="text-2xl font-semibold text-gray-800 mb-6 text-center">
               Instructor Evaluation
             </h3>
-            
+
             {evaluationQuestions.map(category => {
               const dbCategory = categoryToDbMap[category.category];
               const categoryScore = categoryScores[dbCategory];
-              
+
               return (
                 <div key={category.category} className="mb-10 p-6 border border-gray-200 rounded-lg bg-gray-50">
                   <div className="text-center mb-6">
@@ -334,7 +320,7 @@ export default function EvaluationForm() {
                       </div>
                     )}
                   </div>
-                  
+
                   {category.questions.map(q => (
                     <div
                       key={q.id}
@@ -348,11 +334,6 @@ export default function EvaluationForm() {
                         currentScore={scores[q.id]}
                         onSelectScore={handleScoreChange}
                       />
-                      {scores[q.id] > 0 && (
-                        <div className="mt-2 text-sm text-green-600 font-medium">
-                          Selected: {scores[q.id]}
-                        </div>
-                      )}
                     </div>
                   ))}
                 </div>
@@ -409,7 +390,7 @@ export default function EvaluationForm() {
               }`}
             >
               {isSubmitting ? 'Submitting Evaluation...' : 
-               isFormValid ? `Submit Evaluation (${totalRating.toFixed(2)})` : 
+               isFormValid ? `Submit Evaluation` :
                'Complete All Questions to Submit'}
             </button>
             
