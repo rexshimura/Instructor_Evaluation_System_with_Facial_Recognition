@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import ModeratorNavBar from "../../../components/module_layout/ModeratorNavBar";
-import { FiUser, FiBook, FiSave, FiX, FiPlus, FiLink, FiRefreshCw } from "react-icons/fi";
+import { FiUser, FiBook, FiSave, FiX, FiPlus, FiLink, FiRefreshCw, FiSearch } from "react-icons/fi";
 import axios from "axios";
 
 const API_BASE = "http://localhost:5000";
@@ -14,6 +14,10 @@ export default function InstructorSections() {
   const [selectedInstructor, setSelectedInstructor] = useState(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  // Search States
+  const [instructorSearch, setInstructorSearch] = useState("");
+  const [availableSearch, setAvailableSearch] = useState(""); // NEW: Search for available assignments
 
   useEffect(() => {
     fetchAllData();
@@ -63,15 +67,26 @@ export default function InstructorSections() {
   const handleInstructorSelect = (instructorId) => {
     const instructor = instructors.find(inst => inst.ins_id === instructorId);
     setSelectedInstructor(instructor);
+    setAvailableSearch(""); // Clear available search when switching instructor
   };
+
+  // Filter instructors based on search query
+  const filteredInstructors = instructors.filter(inst => {
+    const searchLower = instructorSearch.toLowerCase();
+    return (
+      inst.ins_fname.toLowerCase().includes(searchLower) ||
+      inst.ins_lname.toLowerCase().includes(searchLower) ||
+      inst.ins_dept.toLowerCase().includes(searchLower) ||
+      inst.ins_id.toString().includes(searchLower)
+    );
+  });
 
   // Get instructor's assigned sections with subjects
   const getAssignedSections = () => {
     if (!selectedInstructor) return [];
-    
+
     const assigned = sectionAssignments
       .filter(assignment => {
-        // Find the instructor_subject record to get the instructor ID
         const instructorSubject = instructorSubjects.find(is => is.insub_id === assignment.insub_id);
         return instructorSubject && instructorSubject.ins_id === selectedInstructor.ins_id;
       })
@@ -79,7 +94,7 @@ export default function InstructorSections() {
         const instructorSubject = instructorSubjects.find(is => is.insub_id === assignment.insub_id);
         const section = sections.find(s => s.section_id === assignment.section_id);
         const subject = subjects.find(sub => sub.sub_id === instructorSubject?.sub_id);
-        
+
         return {
           ...assignment,
           section,
@@ -90,15 +105,13 @@ export default function InstructorSections() {
       })
       .filter(item => item.section && item.subject && item.ins_id);
 
-    console.log("Assigned sections for instructor:", selectedInstructor.ins_id, assigned);
     return assigned;
   };
 
   // Get available instructor-subject combinations for assignment
   const getAvailableAssignments = () => {
     if (!selectedInstructor) return [];
-    
-    // Get instructor's subjects
+
     const instructorSubs = instructorSubjects
       .filter(is => is.ins_id === selectedInstructor.ins_id)
       .map(is => {
@@ -107,13 +120,11 @@ export default function InstructorSections() {
       })
       .filter(item => item.subject);
 
-    // Get all possible section-subject combinations
     const allCombinations = [];
     sections.forEach(section => {
       instructorSubs.forEach(instructorSub => {
-        // Check if this combination is already assigned
-        const isAssigned = sectionAssignments.some(assignment => 
-          assignment.section_id === section.section_id && 
+        const isAssigned = sectionAssignments.some(assignment =>
+          assignment.section_id === section.section_id &&
           assignment.insub_id === instructorSub.insub_id
         );
 
@@ -132,21 +143,14 @@ export default function InstructorSections() {
 
   const assignSection = async (sectionId, insubId) => {
     try {
-      console.log("Assigning section:", { sect_id: sectionId, insub_id: insubId });
-      
-      const response = await axios.post(`${API_BASE}/section-assignments`, {
+      await axios.post(`${API_BASE}/section-assignments`, {
         sect_id: sectionId,
         insub_id: insubId
       });
-
-      console.log("Assignment response:", response.data);
-
-      // Refresh the assignments to get the complete data
       await refreshAssignments();
       alert('Section assigned successfully!');
     } catch (error) {
       console.error("Error assigning section:", error);
-      console.error("Error details:", error.response?.data);
       alert(`Failed to assign section: ${error.response?.data?.error || error.message}`);
     }
   };
@@ -154,21 +158,17 @@ export default function InstructorSections() {
   const unassignSection = async (ssiId) => {
     try {
       await axios.delete(`${API_BASE}/section-assignments/${ssiId}`);
-      
-      // Update local state by removing the assignment
       setSectionAssignments(prev => prev.filter(assignment => assignment.ssi_id !== ssiId));
       alert('Section unassigned successfully!');
     } catch (error) {
       console.error("Error unassigning section:", error);
-      console.error("Error details:", error.response?.data);
       alert(`Failed to unassign section: ${error.response?.data?.error || error.message}`);
     }
   };
 
-  // Get instructor's subjects
   const getInstructorSubjects = () => {
     if (!selectedInstructor) return [];
-    
+
     return instructorSubjects
       .filter(is => is.ins_id === selectedInstructor.ins_id)
       .map(is => {
@@ -193,13 +193,23 @@ export default function InstructorSections() {
   }
 
   const assignedSections = getAssignedSections();
-  const availableAssignments = getAvailableAssignments();
+
+  // NEW: Apply search filter to available assignments
+  const availableAssignments = getAvailableAssignments().filter(item => {
+    const search = availableSearch.toLowerCase();
+    return (
+      item.section.sect_name.toLowerCase().includes(search) ||
+      item.instructorSubject.subject.sub_name.toLowerCase().includes(search) ||
+      item.section.sect_course.toLowerCase().includes(search)
+    );
+  });
+
   const instructorSubjectsList = getInstructorSubjects();
 
   return (
     <div className="min-h-screen bg-gray-100 flex flex-col">
       <ModeratorNavBar />
-      
+
       <main className="flex-1 p-4 md:p-8 max-w-screen-xl mx-auto w-full">
         <header className="mb-8">
           <div className="flex justify-between items-center">
@@ -223,24 +233,43 @@ export default function InstructorSections() {
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow-md p-6">
               <h2 className="text-lg font-semibold mb-4">Select Instructor</h2>
+
+              {/* Instructor Search Input */}
+              <div className="relative mb-4">
+                <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search by name, ID, or dept..."
+                  value={instructorSearch}
+                  onChange={(e) => setInstructorSearch(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"
+                />
+              </div>
+
               <div className="space-y-2 max-h-96 overflow-y-auto">
-                {instructors.map((instructor) => (
-                  <button
-                    key={instructor.ins_id}
-                    onClick={() => handleInstructorSelect(instructor.ins_id)}
-                    className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                      selectedInstructor?.ins_id === instructor.ins_id
-                        ? 'border-blue-500 bg-blue-50 text-blue-700'
-                        : 'border-gray-200 hover:bg-gray-50'
-                    }`}
-                  >
-                    <div className="font-medium">{instructor.ins_fname} {instructor.ins_lname}</div>
-                    <div className="text-sm text-gray-500">{instructor.ins_dept}</div>
-                    <div className="text-xs text-gray-400 mt-1">
-                      ID: {instructor.ins_id}
-                    </div>
-                  </button>
-                ))}
+                {filteredInstructors.length > 0 ? (
+                  filteredInstructors.map((instructor) => (
+                    <button
+                      key={instructor.ins_id}
+                      onClick={() => handleInstructorSelect(instructor.ins_id)}
+                      className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                        selectedInstructor?.ins_id === instructor.ins_id
+                          ? 'border-blue-500 bg-blue-50 text-blue-700'
+                          : 'border-gray-200 hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="font-medium">{instructor.ins_fname} {instructor.ins_lname}</div>
+                      <div className="text-sm text-gray-500">{instructor.ins_dept}</div>
+                      <div className="text-xs text-gray-400 mt-1">
+                        ID: {instructor.ins_id}
+                      </div>
+                    </button>
+                  ))
+                ) : (
+                  <div className="text-center py-4 text-gray-500 text-sm">
+                    No instructors found.
+                  </div>
+                )}
               </div>
             </div>
 
@@ -252,7 +281,7 @@ export default function InstructorSections() {
                   Instructor's Subjects ({instructorSubjectsList.length})
                 </h3>
                 {instructorSubjectsList.length > 0 ? (
-                  <div className="space-y-2">
+                  <div className="space-y-2 max-h-[200px] overflow-y-auto">
                     {instructorSubjectsList.map((item) => (
                       <div key={item.insub_id} className="p-2 border border-gray-200 rounded">
                         <div className="font-medium text-sm">{item.subject.sub_name}</div>
@@ -317,9 +346,9 @@ export default function InstructorSections() {
                       Refresh
                     </button>
                   </div>
-                  
+
                   {assignedSections.length > 0 ? (
-                    <div className="space-y-3">
+                    <div className="space-y-3 max-h-[350px] overflow-y-auto pr-2">
                       {assignedSections.map((assignment) => (
                         <div key={assignment.ssi_id} className="flex justify-between items-center p-4 border border-gray-200 rounded-lg">
                           <div className="flex-1">
@@ -368,9 +397,21 @@ export default function InstructorSections() {
                     <FiPlus className="text-blue-600" />
                     Available Assignments ({availableAssignments.length})
                   </h3>
-                  
+
+                  {/* NEW: Available Assignments Search Input */}
+                  <div className="relative mb-4">
+                    <FiSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search available sections or subjects..."
+                      value={availableSearch}
+                      onChange={(e) => setAvailableSearch(e.target.value)}
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 text-sm"
+                    />
+                  </div>
+
                   {availableAssignments.length > 0 ? (
-                    <div className="space-y-3">
+                    <div className="space-y-3 max-h-[350px] overflow-y-auto pr-2">
                       {availableAssignments.map((item) => (
                         <div key={item.combinationId} className="flex justify-between items-center p-4 border border-gray-200 rounded-lg">
                           <div className="flex-1">
@@ -409,9 +450,12 @@ export default function InstructorSections() {
                       <FiUser className="mx-auto text-3xl text-gray-300 mb-3" />
                       <p className="text-gray-500">No available assignments</p>
                       <p className="text-gray-400 text-sm mt-1">
-                        {instructorSubjectsList.length === 0 
-                          ? "This instructor needs subjects assigned first" 
-                          : "All possible combinations are already assigned"
+                        {getAvailableAssignments().length > 0
+                          ? "No assignments match your search"
+                          : (instructorSubjectsList.length === 0
+                            ? "This instructor needs subjects assigned first"
+                            : "All possible combinations are already assigned"
+                          )
                         }
                       </p>
                     </div>

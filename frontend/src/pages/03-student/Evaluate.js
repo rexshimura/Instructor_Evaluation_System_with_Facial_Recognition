@@ -2,6 +2,8 @@ import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import StudentNavBar from "../../components/module_layout/StudentNavBar";
 import axios from "axios";
+// Added FiSearch for the search bar
+import { FiChevronLeft, FiChevronRight, FiSearch } from "react-icons/fi";
 
 const semesterMap = {
   1: "1st Semester",
@@ -20,34 +22,31 @@ export default function StudentInstructorListPage() {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  // FIX 1: Memoize the student object to prevent infinite re-renders
+  // --- Pagination State ---
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(9);
+
   const student = useMemo(() => {
     const userString = sessionStorage.getItem("user");
     return userString ? JSON.parse(userString) : null;
-  }, []); // Empty dependency array means this runs only once
+  }, []);
 
   useEffect(() => {
     if (student) {
       fetchStudentData();
     }
-  }, [student]); // Now student reference is stable
+  }, [student]);
 
   const fetchStudentData = async () => {
     try {
       setLoading(true);
       setError(null);
-      
-      console.log("Fetching data for student:", student.stud_id);
-      
+
       const [evaluationsRes, studentSectionsRes, sectionAssignmentsRes] = await Promise.all([
         axios.get(`/evaluations/student/${student.stud_id}`),
         axios.get(`/student-sections/student/${student.stud_id}`),
         axios.get('/section-assignments')
       ]);
-
-      console.log("Raw Evaluations:", evaluationsRes.data);
-      console.log("Raw Student Sections:", studentSectionsRes.data);
-      console.log("Raw Section Assignments:", sectionAssignmentsRes.data);
 
       setEvaluations(evaluationsRes.data || []);
       setStudentSections(studentSectionsRes.data || []);
@@ -61,7 +60,6 @@ export default function StudentInstructorListPage() {
     }
   };
 
-  // Safe ID comparison function
   const safeIdCompare = (id1, id2) => {
     if (id1 === undefined || id1 === null || id2 === undefined || id2 === null) {
       return false;
@@ -69,63 +67,28 @@ export default function StudentInstructorListPage() {
     return id1.toString() === id2.toString();
   };
 
-  // FIX 2: Memoize the expensive instructor calculation
   const alignedInstructors = useMemo(() => {
     const getEvaluableInstructors = () => {
       try {
-        console.log("Starting getEvaluableInstructors...");
-        console.log("Student Sections:", studentSections);
-        console.log("Section Assignments:", sectionAssignments);
-        console.log("Evaluations:", evaluations);
-
-        if (!studentSections || !Array.isArray(studentSections) || studentSections.length === 0) {
-          console.log("No student sections available");
-          return [];
-        }
-
-        if (!sectionAssignments || !Array.isArray(sectionAssignments) || sectionAssignments.length === 0) {
-          console.log("No section assignments available");
-          return [];
-        }
+        if (!studentSections || !Array.isArray(studentSections) || studentSections.length === 0) return [];
+        if (!sectionAssignments || !Array.isArray(sectionAssignments) || sectionAssignments.length === 0) return [];
 
         const evaluableInstructors = [];
 
-        // For each section the student is enrolled in
-        studentSections.forEach((studentSection, sectionIndex) => {
-          console.log(`Processing student section ${sectionIndex}:`, studentSection);
-          
-          if (!studentSection || !studentSection.section_id) {
-            console.log("Invalid student section, skipping:", studentSection);
-            return;
-          }
+        studentSections.forEach((studentSection) => {
+          if (!studentSection || !studentSection.section_id) return;
 
-          // Find all assignments for this section
           const sectionAssignmentsList = sectionAssignments.filter(assignment => {
-            if (!assignment || !assignment.section_id) {
-              console.log("Invalid assignment, skipping:", assignment);
-              return false;
-            }
+            if (!assignment || !assignment.section_id) return false;
             return safeIdCompare(assignment.section_id, studentSection.section_id);
           });
 
-          console.log(`Section ${studentSection.section_id} assignments:`, sectionAssignmentsList);
-
-          // Process each assignment to get instructor-subject combinations
-          sectionAssignmentsList.forEach((assignment, assignmentIndex) => {
-            console.log(`Processing assignment ${assignmentIndex}:`, assignment);
-            
-            if (!assignment || !assignment.ins_id || !assignment.sub_id) {
-              console.log("Invalid assignment data, skipping:", assignment);
-              return;
-            }
+          sectionAssignmentsList.forEach((assignment) => {
+            if (!assignment || !assignment.ins_id || !assignment.sub_id) return;
 
             const {
               ins_id: instructor_id,
-              ins_fname,
-              ins_lname,
-              ins_dept,
-              ins_email,
-              ins_contact,
+              ins_fname, ins_lname, ins_dept, ins_email, ins_contact,
               sub_id: subject_id,
               sub_name: subject_name,
               sub_miscode,
@@ -133,21 +96,14 @@ export default function StudentInstructorListPage() {
               sub_units
             } = assignment;
 
-            // Check if this instructor-subject combination is already evaluated
             const isEvaluated = evaluations.some(evaluation => {
               if (!evaluation) return false;
-              
               const insMatch = safeIdCompare(evaluation.ins_id, instructor_id);
               const subMatch = safeIdCompare(evaluation.sub_id, subject_id);
               const semesterMatch = evaluation.ev_semester === student.stud_semester;
-              
-              console.log(`Evaluation check: insMatch=${insMatch}, subMatch=${subMatch}, semesterMatch=${semesterMatch}`);
               return insMatch && subMatch && semesterMatch;
             });
 
-            console.log(`Instructor ${instructor_id}, Subject ${subject_id} - Evaluated: ${isEvaluated}`);
-
-            // Find existing instructor or create new one
             let existingInstructor = evaluableInstructors.find(
               inst => inst && safeIdCompare(inst.instructor_id, instructor_id)
             );
@@ -164,14 +120,9 @@ export default function StudentInstructorListPage() {
             };
 
             if (existingInstructor) {
-              // Add subject to existing instructor
               existingInstructor.subjects.push(subjectInfo);
-              // Update pending status
-              if (!isEvaluated) {
-                existingInstructor.isAnySubjectPending = true;
-              }
+              if (!isEvaluated) existingInstructor.isAnySubjectPending = true;
             } else {
-              // Create new instructor entry
               const newInstructor = {
                 instructor_id,
                 instructor_name: `${ins_fname || ''} ${ins_lname || ''}`.trim(),
@@ -187,24 +138,19 @@ export default function StudentInstructorListPage() {
             }
           });
         });
-
-        console.log("Final evaluable instructors:", evaluableInstructors);
         return evaluableInstructors;
-
       } catch (error) {
         console.error("Error in getEvaluableInstructors:", error);
         return [];
       }
     };
-
     return getEvaluableInstructors();
   }, [studentSections, sectionAssignments, evaluations, student]);
 
-  // Memoize filtered instructors for better performance
   const filteredInstructors = useMemo(() => {
     return alignedInstructors.filter((inst) => {
       if (!inst) return false;
-      
+
       const searchLower = searchTerm.toLowerCase();
       const fullName = `${inst.ins_fname || ''} ${inst.ins_lname || ''}`.toLowerCase();
 
@@ -227,6 +173,18 @@ export default function StudentInstructorListPage() {
       return matchesSearch && matchesStatus;
     });
   }, [alignedInstructors, searchTerm, statusFilter]);
+
+  // --- Pagination Logic ---
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
+
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentInstructors = filteredInstructors.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredInstructors.length / itemsPerPage);
+
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
   const handleEvaluateClick = (instructorId, subjectId) => {
     if (!instructorId || !subjectId) {
@@ -252,7 +210,7 @@ export default function StudentInstructorListPage() {
       <div className="min-h-screen flex flex-col">
         <StudentNavBar />
         <main className="flex-1 flex items-center justify-center">
-          <div className="text-gray-500 text-lg">Loading instructors...</div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
         </main>
       </div>
     );
@@ -264,7 +222,7 @@ export default function StudentInstructorListPage() {
         <StudentNavBar />
         <main className="flex-1 flex items-center justify-center">
           <div className="text-red-500 text-lg">{error}</div>
-          <button 
+          <button
             onClick={fetchStudentData}
             className="ml-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
           >
@@ -276,87 +234,147 @@ export default function StudentInstructorListPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-100">
+    <div className="min-h-screen flex flex-col bg-gray-50">
       <StudentNavBar />
-      <main className="flex-1 p-6">
-        <h1 className="text-3xl font-bold mb-4 text-center text-gray-800">
-          Instructors for {student.stud_fname} {student.stud_lname} -{" "}
-          {semesterMap[student.stud_semester]}
-        </h1>
+      <main className="flex-1 p-6 max-w-7xl mx-auto w-full">
 
-        <div className="flex justify-center gap-3 mb-6">
-          {["all", "pending", "completed"].map((status) => (
-            <button
-              key={status}
-              onClick={() => setStatusFilter(status)}
-              className={`px-4 py-2 rounded-lg font-semibold ${
-                statusFilter === status
-                  ? "bg-blue-500 text-white"
-                  : "bg-gray-200 text-gray-700 hover:bg-gray-300"
-              }`}
-            >
-              {status.charAt(0).toUpperCase() + status.slice(1)}
-            </button>
-          ))}
-        </div>
+        {/* --- IMPROVED HEADER SECTION --- */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-800">Faculty Evaluation</h1>
+              <p className="text-sm text-gray-500 mt-1">
+                <span className="font-medium text-gray-700">{student.stud_fname} {student.stud_lname}</span> • {semesterMap[student.stud_semester]}
+              </p>
+            </div>
 
-        <div className="flex justify-center mb-6">
-          <input
-            type="text"
-            placeholder="Search by name, subject, or code..."
-            className="w-full max-w-md p-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
+            {/* Styled Status Filters (Segmented Control) */}
+            <div className="flex bg-gray-100 p-1 rounded-lg">
+              {["all", "pending", "completed"].map((status) => (
+                <button
+                  key={status}
+                  onClick={() => setStatusFilter(status)}
+                  className={`px-4 py-1.5 rounded-md text-sm font-medium transition-all duration-200 capitalize ${
+                    statusFilter === status
+                      ? "bg-white text-blue-600 shadow-sm"
+                      : "text-gray-500 hover:text-gray-700 hover:bg-gray-200/50"
+                  }`}
+                >
+                  {status}
+                </button>
+              ))}
+            </div>
+          </div>
 
-        {/* Debug Information */}
-        <div className="text-xs text-gray-500 mb-4 text-center">
-          Debug: {studentSections.length} sections, {sectionAssignments.length} assignments, {evaluations.length} evaluations, {filteredInstructors.length} instructors to display
+          {/* Improved Search Bar */}
+          <div className="relative max-w-full">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <FiSearch className="text-gray-400" size={18} />
+            </div>
+            <input
+              type="text"
+              placeholder="Search instructor name, subject code, or department..."
+              className="block w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg leading-5 bg-gray-50 placeholder-gray-400 focus:outline-none focus:bg-white focus:ring-2 focus:ring-blue-100 focus:border-blue-500 sm:text-sm transition duration-150 ease-in-out"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
         </div>
+        {/* --- END IMPROVED HEADER SECTION --- */}
+
+        {/* --- Pagination Controls --- */}
+        {filteredInstructors.length > 0 && (
+          <div className="bg-white rounded-lg shadow-sm px-4 py-3 mb-6 border border-gray-200 flex items-center justify-between sm:px-6">
+            <div className="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm text-gray-700">
+                  Showing <span className="font-medium">{indexOfFirstItem + 1}</span> to <span className="font-medium">{Math.min(indexOfLastItem, filteredInstructors.length)}</span> of <span className="font-medium">{filteredInstructors.length}</span> results
+                </p>
+              </div>
+              <div>
+                <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                  <button
+                    onClick={() => paginate(currentPage - 1)}
+                    disabled={currentPage === 1}
+                    className={`relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium ${currentPage === 1 ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-50'}`}
+                  >
+                    <span className="sr-only">Previous</span>
+                    <FiChevronLeft className="h-5 w-5" aria-hidden="true" />
+                  </button>
+
+                  <div className="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium text-gray-700">
+                    Page {currentPage} of {totalPages}
+                  </div>
+
+                  <button
+                    onClick={() => paginate(currentPage + 1)}
+                    disabled={currentPage === totalPages}
+                    className={`relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium ${currentPage === totalPages ? 'text-gray-300 cursor-not-allowed' : 'text-gray-500 hover:bg-gray-50'}`}
+                  >
+                    <span className="sr-only">Next</span>
+                    <FiChevronRight className="h-5 w-5" aria-hidden="true" />
+                  </button>
+                </nav>
+              </div>
+            </div>
+
+            {/* Mobile Pagination View */}
+            <div className="flex sm:hidden justify-between w-full">
+              <button onClick={() => paginate(currentPage - 1)} disabled={currentPage === 1} className="px-4 py-2 border rounded text-sm font-medium disabled:opacity-50 bg-white">Previous</button>
+              <span className="text-sm py-2">Page {currentPage}</span>
+              <button onClick={() => paginate(currentPage + 1)} disabled={currentPage === totalPages} className="px-4 py-2 border rounded text-sm font-medium disabled:opacity-50 bg-white">Next</button>
+            </div>
+          </div>
+        )}
 
         {filteredInstructors.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredInstructors.map((inst) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {currentInstructors.map((inst) => (
               <div
                 key={inst.instructor_id}
-                className="relative bg-white shadow-md rounded-lg p-4 cursor-pointer hover:shadow-xl transition"
+                className="relative bg-white shadow-sm border border-gray-200 rounded-xl p-5 cursor-pointer hover:shadow-md hover:border-blue-300 transition-all duration-200 group"
                 onClick={() => setSelectedInstructor(inst)}
               >
-                <div className="flex items-center space-x-4">
-                  <img
-                    src="/profiles/profile-default.png"
-                    alt={`${inst.ins_fname} ${inst.ins_lname}`}
-                    className="w-16 h-16 rounded-full object-cover border-2 border-gray-300"
-                  />
+                <div className="flex items-center space-x-4 border-b border-gray-100 pb-4 mb-4">
+                  <div className="relative">
+                    <img
+                      src="/profiles/profile-default.png"
+                      alt={`${inst.ins_fname} ${inst.ins_lname}`}
+                      className="w-14 h-14 rounded-full object-cover border-2 border-gray-100 group-hover:border-blue-100 transition-colors"
+                    />
+                    {!inst.isAnySubjectPending && (
+                      <span className="absolute -bottom-1 -right-1 bg-green-500 border-2 border-white w-4 h-4 rounded-full" title="All Completed"></span>
+                    )}
+                  </div>
                   <div>
-                    <p className="font-semibold text-lg">
+                    <p className="font-bold text-gray-800 text-lg group-hover:text-blue-600 transition-colors">
                       {inst.ins_fname} {inst.ins_lname}
                     </p>
-                    <p className="text-gray-500 text-sm">{inst.ins_dept}</p>
+                    <p className="text-gray-500 text-xs uppercase tracking-wide font-semibold">{inst.ins_dept}</p>
                   </div>
                 </div>
 
-                <div className="mt-4 space-y-2">
-                  {inst.subjects && inst.subjects.map((sub, idx) => (
+                <div className="space-y-2.5">
+                  {inst.subjects && inst.subjects.slice(0, 3).map((sub, idx) => (
                     <div
                       key={`${inst.instructor_id}-${sub.subject_id}-${idx}`}
-                      className="text-sm text-gray-600 flex justify-between items-center bg-gray-50 p-2 rounded"
+                      className="text-sm flex justify-between items-center p-2 rounded-lg bg-gray-50 group-hover:bg-blue-50/30 transition-colors"
                     >
-                      <div>
-                        {sub.subject_name} ({sub.sub_miscode})
-                        <br />
-                        <span className="text-xs text-gray-500">
-                          Section: {sub.section_name}
-                        </span>
+                      <div className="flex-1 min-w-0 pr-2">
+                        <p className="font-medium text-gray-700 truncate" title={sub.subject_name}>
+                           {sub.sub_miscode}
+                        </p>
+                        <p className="text-xs text-gray-500 truncate">
+                          {sub.section_name}
+                        </p>
                       </div>
                       {sub.isEvaluated ? (
-                        <span className="bg-green-500 text-white font-bold py-1 px-2 rounded text-xs">
-                          Completed
+                        <span className="text-green-600 bg-green-50 px-2 py-0.5 rounded text-[10px] font-bold border border-green-100">
+                          DONE
                         </span>
                       ) : (
                         <button
-                          className="bg-blue-500 text-white font-bold py-1 px-2 rounded hover:bg-blue-600 transition text-xs"
+                          className="bg-blue-600 text-white text-xs font-semibold py-1 px-3 rounded-md hover:bg-blue-700 shadow-sm transition-colors"
                           onClick={(e) => {
                             e.stopPropagation();
                             handleEvaluateClick(inst.instructor_id, sub.subject_id);
@@ -367,97 +385,102 @@ export default function StudentInstructorListPage() {
                       )}
                     </div>
                   ))}
+                  {inst.subjects && inst.subjects.length > 3 && (
+                     <p className="text-center text-xs text-gray-400 mt-1">+{inst.subjects.length - 3} more subjects</p>
+                  )}
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="text-center text-gray-500 mt-8">
-            {studentSections.length > 0 ? (
-              <div>
-                <p>No instructors found for your sections.</p>
-                <p className="text-sm mt-2">
-                  You are enrolled in {studentSections.length} section(s) but no instructor assignments were found.
-                </p>
-                <button 
+          <div className="text-center text-gray-500 mt-12 bg-white p-12 rounded-xl border border-gray-200 border-dashed">
+             <div className="mx-auto h-12 w-12 text-gray-300 mb-3">
+               <FiSearch size={48} />
+             </div>
+             <h3 className="text-lg font-medium text-gray-900">No instructors found</h3>
+             <p className="text-gray-500 mt-1 mb-6">We couldn't find any instructors matching your search.</p>
+             <button
                   onClick={fetchStudentData}
-                  className="mt-4 bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                  className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 font-medium transition-colors"
                 >
-                  Retry
-                </button>
-              </div>
-            ) : (
-              <div>
-                <p>You are not enrolled in any sections yet.</p>
-                <p className="text-sm mt-2">
-                  Please contact administration to be assigned to a section.
-                </p>
-              </div>
-            )}
+                  Refresh Data
+             </button>
           </div>
         )}
       </main>
 
+      {/* Modal Logic Remains Unchanged */}
       {selectedInstructor && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-lg w-full max-w-2xl p-6 relative max-h-[90vh] overflow-y-auto">
-            <button
-              className="absolute top-2 right-2 text-gray-600 hover:text-gray-800 font-bold text-xl"
-              onClick={() => setSelectedInstructor(null)}
-            >
-              &times;
-            </button>
-            <div className="flex items-center space-x-4 mb-6">
-              <img
-                src="/profiles/profile-default.png"
-                alt={`${selectedInstructor.ins_fname} ${selectedInstructor.ins_lname}`}
-                className="w-20 h-20 rounded-full object-cover border-2 border-gray-300"
-              />
-              <div>
-                <h2 className="text-2xl font-bold">
-                  {selectedInstructor.ins_fname} {selectedInstructor.ins_lname}
-                </h2>
-                <p className="text-gray-600">{selectedInstructor.ins_dept}</p>
-                <p className="text-gray-600">{selectedInstructor.ins_email}</p>
-                <p className="text-gray-600">{selectedInstructor.ins_contact}</p>
-              </div>
-            </div>
-            <h3 className="text-xl font-semibold mb-2 border-b pb-2">
-              Subject Load
-            </h3>
-            <div className="space-y-4">
-              {selectedInstructor.subjects && selectedInstructor.subjects.map((sub, index) => (
-                <div
-                  key={index}
-                  className="bg-gray-50 p-3 rounded-md border flex justify-between items-center"
-                >
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-0 relative max-h-[90vh] overflow-y-auto transform transition-all scale-100">
+
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-2xl">
+               <div className="flex items-center space-x-4">
+                  <img
+                    src="/profiles/profile-default.png"
+                    alt={`${selectedInstructor.ins_fname} ${selectedInstructor.ins_lname}`}
+                    className="w-16 h-16 rounded-full object-cover border-4 border-white shadow-sm"
+                  />
                   <div>
-                    <p className="font-medium">
-                      {sub.subject_name} ({sub.sub_miscode})
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      {sub.subject_course} - {sub.sub_units} units
-                    </p>
-                    <p className="text-sm text-gray-600">
-                      Section: {sub.section_name}
-                    </p>
+                    <h2 className="text-xl font-bold text-gray-800">
+                      {selectedInstructor.ins_fname} {selectedInstructor.ins_lname}
+                    </h2>
+                    <p className="text-sm text-gray-500 font-medium">{selectedInstructor.ins_dept}</p>
                   </div>
-                  <button
-                    disabled={sub.isEvaluated}
-                    className={
-                      sub.isEvaluated
-                        ? "bg-gray-400 text-white font-bold py-2 px-4 rounded cursor-not-allowed"
-                        : "bg-blue-500 text-white font-bold py-2 px-4 rounded hover:bg-blue-600 transition"
-                    }
-                    onClick={() =>
-                      !sub.isEvaluated &&
-                      handleEvaluateClick(selectedInstructor.instructor_id, sub.subject_id)
-                    }
+               </div>
+               <button
+                className="text-gray-400 hover:text-gray-600 bg-white hover:bg-gray-100 rounded-full p-2 transition-all"
+                onClick={() => setSelectedInstructor(null)}
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="p-6">
+              <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">
+                Subject Load
+              </h3>
+              <div className="space-y-3">
+                {selectedInstructor.subjects && selectedInstructor.subjects.map((sub, index) => (
+                  <div
+                    key={index}
+                    className="bg-white border border-gray-200 p-4 rounded-xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 hover:border-blue-200 transition-colors shadow-sm"
                   >
-                    {sub.isEvaluated ? "Evaluated" : "Evaluate"}
-                  </button>
-                </div>
-              ))}
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-bold text-gray-800">
+                          {sub.sub_miscode}
+                        </p>
+                        <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">{sub.section_name}</span>
+                      </div>
+                      <p className="text-sm text-gray-600 mt-1">
+                        {sub.subject_name}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {sub.subject_course} • {sub.sub_units} units
+                      </p>
+                    </div>
+                    <button
+                      disabled={sub.isEvaluated}
+                      className={
+                        sub.isEvaluated
+                          ? "w-full sm:w-auto bg-green-50 text-green-700 border border-green-200 font-semibold py-2 px-4 rounded-lg cursor-not-allowed flex items-center justify-center gap-2"
+                          : "w-full sm:w-auto bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg hover:bg-blue-700 shadow-sm hover:shadow transition-all"
+                      }
+                      onClick={() =>
+                        !sub.isEvaluated &&
+                        handleEvaluateClick(selectedInstructor.instructor_id, sub.subject_id)
+                      }
+                    >
+                      {sub.isEvaluated ? (
+                        <>
+                          <span>✓ Completed</span>
+                        </>
+                      ) : "Evaluate Now"}
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </div>
